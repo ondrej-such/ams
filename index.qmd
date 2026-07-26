@@ -1,43 +1,163 @@
 ---
-title: Calibration of a classification model
+title: Calibration of logistic models
 authors:
   - name: Ondrej Šuch, Peter Novotný
     affiliation: The University
     roles: writing
     corresponding: true
+notebook-links: false
 bibliography: references.bib
 ---
 
-## Introduction
+# Introduction
 
-The key concept of probability theory is that of probability of a random event. Historically, the concept of probability has arisen from analysis of hazard games by P. Fermat and B. Pascal. Fittingly, to this date many undergraduate textbooks will have exercises asking students to determine the probability of an event that arises after throwing one or more dice or by flipping coin(s).
+Probabilistic modelling provides answer to the quintessential question of probability theory: "What is the probability of an event". In classroom setting, the answer is typically a single number which is deduced from modelling assumptions. For instance, we may assume that we roll a perfectly symmetrical dice or, that subsequent coin flips are identical. In practical applications, however, the question to quantify probability is often asked \emph{repeatedly} with varying context. One naturally expects that the answer will vary depending on the context. For instance, a bank may wonder what is the probability that the borrower will repay a loan. The context could be provided by the current financial disclosure of the borrower's assets. To answer the question it is customary to build a mathematical model.
 
-The advantage of such exercises is obvious - one can readily enumerate all the possibilities on a sheet of paper, draw flowcharts of conditional outcomes, and count the probability by dividing the ratio of favorable events to the cardinality of the set of all possible outcomes. This is all possible because the underlying probability space is discrete. Moreover, the dice itself is quite familiar to anyone who ever played a board game. As an interesting tidbit, recent research shows that usage of dice has been part of Native American culture dating back least 12 000 years [@Madden_2026].
+There is a multitude of ways to build different models, and thus one may wonder which models are good, or perhaps even which one in a set of models is the best. Historically, the question gained attention in the context of weather forecasting. Since early 20th century weather forecasts are typically are probabilistic. An easy way to check how good a weather forecasters (or more precisely their models) are, is to compare them with climate observations. Climate is computed by taking the expected frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be pretty close.
 
-On the other hand there are some drawbacks of relying on analysis of games of chance for pedagogy. There is currently a vast spectrum of applications of probability theory in science and business. Analysis of hazard games is but a negligible slice in the spectrum. Discrete probability spaces do not (readily) connect to the omnipresent concept of normal distribution. Finally, hazard and betting have been criticized on moral grounds from the time of Aristoteles [@aristotle1926nicomachean] to present day late night hosts [@lastweektonight2026prediction].
+There is an even finer method to compare forecast's fidelity. We can subdivide the probability interval $[0,1]$ into (nonintersecting) subintervals. For each subinterval, we compare the observed frequency of rain on days when the forecast fell into it. Suppose for instance that one the subintervals was $I = [0.45, 0.55]$. We would expect that the probability $p$ of rain on days when forecast fell into $I$ would be around 0.5 A model that matches this expectation reasonably well is said to be *well-calibrated*. An example of real-world diagram that checks for calibration is in
 
-In this paper we will discuss an application of probability theory that has not such drawbacks. It is the problem of probabilistic binary classification.
+![Example of weather calibration](BrierExample.png)
 
-## The problem
+Good calibration of a probabilistic model is a very desirable property.
 
-In binary classification we are told that an object (or event) belongs to one of two non-interesecting set of classes $C_1$ and $C_2$. The goal of classification is to determine whether a randomly drawn object actually belongs to $C_1$. Probabilistic binary classification asks to determine the probability of the event that a previously unseen object belongs to one of the classes, say $C_1$.
+# Logistic models
 
-The problem would be straightforward in the absence of additional information. Then the answer to the question would be the same for every object.
+A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. Mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a logistic model we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability $$
+p(\mathbf{x}) = \sigma(\mathbf{w} \cdot \mathbf{x}),\quad\textrm{where } \sigma(x) = \frac{\exp x}{1 + \exp{x}}.
+$$ {#eq-logistic}
 
-In order to make the problem non-trivial, one assumes that the answer will depend on some extra information that will be provided for the particular object that we are classifying. Let us list some examples
+The two principal examples of logistic models are linear discriminant analysis and logistic regression. They both have form @eq-logistic, but they differ in the method they use to estimate the weight vector $\mathbf{w}$. Logistic regression is more commonly used, but they are considered to give approximately the same results. We can illustrate it on the famous iris dataset. The iris dataset was created in 1930's by Edgar Anderson, an American botanist. It contains four measurements (features) of three iris species
 
-| Class $C_1$ | Class $C_2$ | Extra information provided | Col4 | Col5 |
-|----|----|----|----|----|
-| Tennis player will win the next game in a match | Tennis player will not win the next game in a match. | Whether the player won the last two games. |  |  |
-| The borrower will repay \$1000 loan | The borrower will not repay \$1000 loan. | Income of the borrower in the past 6 months. |  |  |
-| A person will contribute money to reelection campaign | A person will not contribute money to campaign | Voter party registration |  |  |
-| The person calling on the phone speaks English | The person calling  does not speak English | Recording of the first 2 seconds |  |  |
-|  |  |  |  |  |
+-   iris versicolor L.,
+-   iris virginica L.,
+-   iris setosa.
 
-## The solution: probabilistic model
+From statistical point of view the important property of the dataset is that the features are approximately normally distributed. Let us illustrate this by comparing the distributions of one the measurements (the width of petal) as shown in @fig-density.
 
-In determining the probability of an event, one usually makes some (modelling) assumptions which allow one to arrive at the final answer. Examples of such assumptions are
+```{r}
+#| label: fig-density
+#| echo: false
+#| fig-cap: Class-conditional densities of Petal.Width for versicolor and virginica (kernel density estimate)
+d0 <- droplevels(subset(iris, Species %in% c("versicolor", "virginica")))
 
--   the probability of rainining today is the same as a year ago
+col_versicolor <- "#1b9e77"
+col_virginica  <- "#d95f02"
 
--   the answer of one person polled is independent of another one.
+dens_versicolor <- density(d0$Petal.Width[d0$Species == "versicolor"])
+dens_virginica  <- density(d0$Petal.Width[d0$Species == "virginica"])
+
+par(mar = c(4, 4.5, 3, 1))
+plot(dens_versicolor, col = col_versicolor, lwd = 2,
+     xlim = range(d0$Petal.Width),
+     ylim = c(0, max(dens_versicolor$y, dens_virginica$y)),
+     xlab = "Petal.Width", ylab = "Density", main = "")
+lines(dens_virginica, col = col_virginica, lwd = 2, lty = 2)
+
+rug(d0$Petal.Width[d0$Species == "versicolor"], col = paste0(col_versicolor, "99"))
+rug(d0$Petal.Width[d0$Species == "virginica"], side = 3, col = paste0(col_virginica, "99"))
+
+legend("topright", bty = "n", legend = c("versicolor", "virginica"),
+       col = c(col_versicolor, col_virginica), lwd = 2, lty = c(1, 2))
+```
+
+ The results are shown in @fig-chunk1. They include Bayes classifier 
+$$
+\hat p(virginica | x) = \frac{\hat p(x \mid virginica)P(virginica)}{\hat p(x \mid virginica)P(virginica)+ \hat p(x \mid versicolor)P(versicolor)}
+$$
+
+```{r }
+#| label: fig-chunk1
+#| echo: false
+#| fig-cap: Comparison of LDA and logistic regression on iris dataset
+suppressPackageStartupMessages(library(MASS))
+
+d <- droplevels(subset(iris, Species %in% c("versicolor", "virginica")))
+d$y <- as.integer(d$Species == "virginica")
+
+lda_fit <- lda(Species ~ Petal.Width, data = d)
+glm_fit <- glm(y ~ Petal.Width, data = d, family = binomial)
+
+xg <- seq(min(d$Petal.Width), max(d$Petal.Width), length.out = 400)
+
+p_lda <- predict(lda_fit, newdata = data.frame(Petal.Width = xg))$posterior[, "virginica"]
+p_glm <- predict(glm_fit, newdata = data.frame(Petal.Width = xg), type = "response")
+
+## Nonparametric ("plug-in") Bayes classifier: estimate each class-conditional
+## density via KDE, then combine via Bayes' rule (equal priors, n = 50 each).
+dens_versicolor <- density(d$Petal.Width[d$Species == "versicolor"])
+dens_virginica  <- density(d$Petal.Width[d$Species == "virginica"])
+f_versicolor <- approxfun(dens_versicolor$x, dens_versicolor$y, rule = 2)
+f_virginica  <- approxfun(dens_virginica$x, dens_virginica$y, rule = 2)
+p_bayes <- f_virginica(xg) / (f_versicolor(xg) + f_virginica(xg))
+
+col_lda   <- "#1b9e77"
+col_glm   <- "#d95f02"
+col_bayes <- "#7570b3"
+
+par(mar = c(4, 4.5, 3, 1))
+plot(xg, p_lda, type = "l", lwd = 2, col = col_lda, yaxt = "n",
+     xlab = "Petal.Width", ylab = "P(virginica | Petal.Width)",
+     main = "", ylim = c(0, 1))
+lines(xg, p_glm, lwd = 2, lty = 2, col = col_glm)
+lines(xg, p_bayes, lwd = 2, lty = 3, col = col_bayes)
+
+## y-axis on [0,1], tick labels to 1 decimal place
+y_ticks <- seq(0, 1, by = 0.2)
+axis(2, at = y_ticks, labels = sprintf("%.1f", y_ticks), las = 1)
+
+## Maximal gap between the two predicted curves, marked with a vertical
+## segment capped by small horizontal ticks at each end (a "dimension line").
+gap <- abs(p_lda - p_glm)
+i_max <- which.max(gap)
+x_max <- xg[i_max]
+y_lo <- min(p_lda[i_max], p_glm[i_max])
+y_hi <- max(p_lda[i_max], p_glm[i_max])
+
+arrows(x0 = x_max, y0 = y_lo, x1 = x_max, y1 = y_hi,
+       code = 3, angle = 90, length = 0.05, lwd = 1.5, col = "black")
+text(x_max, y_hi, sprintf("max gap = %.2f", gap[i_max]), pos = 3, cex = 0.85)
+
+legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression", "Bayes (KDE plug-in)"),
+       col = c(col_lda, col_glm, col_bayes), lwd = 2, lty = c(1, 2, 3))
+```
+
+Interestingly, we couldn't carry out the comparison for virginica and setosa samples. The reason relies on two key facts
+
+-   logistic regression model is fitted to maximize the expected likelihood on the dataset (maximum likelihood method)
+-   the ranges of petal width do not intersect (the data is linearly separable), as shown in @tbl-petalwidth.
+
+<!-- @tbl-petalwidth shows the range (minimum and maximum) of petal width for each of the three species. -->
+
+```{r}
+#| label: tbl-petalwidth
+#| echo: false
+#| tbl-cap: Range of Petal.Width (cm) by species
+species_levels <- levels(iris$Species)
+petal_width_tab <- data.frame(
+  Species = species_levels,
+  Min  = sapply(species_levels, function(s) min(iris$Petal.Width[iris$Species == s])),
+  Max  = sapply(species_levels, function(s) max(iris$Petal.Width[iris$Species == s])),
+  Mean = sapply(species_levels, function(s) mean(iris$Petal.Width[iris$Species == s])),
+  SD   = sapply(species_levels, function(s) sd(iris$Petal.Width[iris$Species == s]))
+)
+## Two-line header only renders reliably in HTML; fall back to a plain
+## single-line label for docx/jats so the pipe-table syntax isn't broken.
+sd_label <- if (knitr::is_html_output()) "Standard<br>Deviation" else "Standard Deviation"
+knitr::kable(petal_width_tab, digits = 2, row.names = FALSE, escape = FALSE,
+             col.names = c("Species", "Min", "Max", "Mean", sd_label))
+```
+
+Since the ranges do not intersect, it is possible to fit model so that probabilities at dataset points are arbitrarily close to the true values zero and one. However they will never be exactly zero and one, since the logistic function $\sigma(x)$ (recall @eq-logistic) never attains those values.
+
+This problem does not occur with LDA. Fitting LDA can be done in either of two ways - by maximizing Fisher discriminant ratio, - by maximum likelihood.
+
+The existence of the optimal LDA model (under mild nondegeneracy assumptions) is assured by the fact that Fisher discriminant ratio is the same for collinear vectors, and thus follows from the fact that a continuous function always attains a maximum on a sphere, since the sphere is a compact set.
+
+This argument obviously will not for logistic regression, since the objective, the expected likelihood is not invariant to rescaling the model's coefficients.
+
+An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on the distribution of the variate for both classes if we take enough samples, the ranges will intersect. However given parameters from @tbl-petalwidth, it would take more than 400000 samples to have at least 50% chance to have have intersecting ranges. Another way is needed. We will provide several alternatives in the next section.
+
+# Regularization of logistic regression
+
+

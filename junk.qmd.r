@@ -1,0 +1,33 @@
+## Introduction
+
+The key concept of probability theory is that of probability of a random event. Historically, the concept of probability has arisen from analysis of hazard games by P. Fermat and B. Pascal. Fittingly, to this date many undergraduate textbooks will have exercises asking students to determine the probability of an event that arises after throwing one or more dice or by flipping coin(s).
+
+The advantage of such exercises is obvious - one can readily enumerate all the possibilities on a sheet of paper, draw flowcharts of conditional outcomes, and count the probability by dividing the ratio of favorable events to the cardinality of the set of all possible outcomes. This is all possible because the underlying probability space is discrete. Moreover, the dice itself is quite familiar to anyone who ever played a board game. As an interesting tidbit, recent research shows that usage of dice has been part of Native American culture dating back least 12 000 years [@Madden_2026].
+
+On the other hand there are some drawbacks of relying on analysis of games of chance for pedagogy. There is currently a vast spectrum of applications of probability theory in science and business. Analysis of hazard games is but a negligible slice in the spectrum. Discrete probability spaces do not (readily) connect to the omnipresent concept of normal distribution. Finally, hazard and betting have been criticized on moral grounds from the time of Aristoteles [@aristotle1926nicomachean] to present day late night hosts [@lastweektonight2026prediction].
+
+In this paper we will discuss an application of probability theory that has not such drawbacks. It is the problem of probabilistic binary classification.
+
+## The problem
+
+In binary classification we are told that an object (or event) belongs to one of two non-interesecting set of classes $C_1$ and $C_2$. The goal of classification is to determine whether a randomly drawn object actually belongs to $C_1$. Probabilistic binary classification asks to determine the probability of the event that a previously unseen object belongs to one of the classes, say $C_1$.
+
+The problem would be straightforward in the absence of additional information. Then the answer to the question would be the same for every object.
+
+In order to make the problem non-trivial, one assumes that the answer will depend on some extra information that will be provided for the particular object that we are classifying. Let us list some examples
+
+| Class $C_1$ | Class $C_2$ | Extra information provided | Col4 | Col5 |
+  |---------------|---------------|---------------|---------------|---------------|
+  | Tennis player will win the next game in a match | Tennis player will not win the next game in a match. | Whether the player won the last two games. |  |  |
+  | The borrower will repay \$1000 loan | The borrower will not repay \$1000 loan. | Income of the borrower in the past 6 months. |  |  |
+  | A person will contribute money to reelection campaign | A person will not contribute money to campaign | Voter party registration |  |  |
+  | The person calling on the phone speaks English | The person calling does not speak English | Recording of the first 2 seconds |  |  |
+  |  |  |  |  |  |
+  
+  ## The solution: probabilistic model
+  
+  In determining the probability of an event, one usually makes some (modelling) assumptions which allow one to arrive at the final answer. Examples of such assumptions are
+
+-   the probability of rainining today is the same as a year ago
+
+-   the answer of one person polled is independent of another one.
