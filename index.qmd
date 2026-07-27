@@ -1,5 +1,5 @@
 ---
-title: Calibration of logistic models
+title: Multiplicative miscalibration of logistic models
 authors:
   - name: Ondrej Šuch, Peter Novotný
     affiliation: The University
