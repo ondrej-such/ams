@@ -25,7 +25,12 @@ Good calibration of a probabilistic model is a very desirable property.
 
 A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. Mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a logistic model we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability $$
 p(\mathbf{x}) = \sigma(\mathbf{w} \cdot \mathbf{x}),\quad\textrm{where } \sigma(x) = \frac{\exp x}{1 + \exp{x}}.
-$$ {#eq-logistic}
+$$ {#eq-logistic} Note that we have $$
+\begin{aligned}
+\lim_{x\rightarrow-\infty} \sigma(x) = 0, \quad \textrm{and}\quad
+\lim_{x\rightarrow\infty} \sigma(x) = 1
+\end{aligned},
+$$ {#eq-logistic2} and thus this model allows predicting probabilities in the whole range $(0,1)$.
 
 The two principal examples of logistic models are linear discriminant analysis and logistic regression. They both have form @eq-logistic, but they differ in the method they use to estimate the weight vector $\mathbf{w}$. Logistic regression is more commonly used, but they are considered to give approximately the same results. We can illustrate it on the famous iris dataset. The iris dataset was created in 1930's by Edgar Anderson, an American botanist. It contains four measurements (features) of three iris species
 
@@ -39,6 +44,16 @@ From statistical point of view the important property of the dataset is that the
 #| label: fig-density
 #| echo: false
 #| fig-cap: Class-conditional densities of Petal.Width for versicolor and virginica (kernel density estimate)
+#| dev: !expr if (knitr::is_latex_output()) "tikz" else "png"
+#| fig-ext: !expr if (knitr::is_latex_output()) "tex" else "png"
+
+## In the PDF/LaTeX render, use tikzDevice so all plot text (including the
+## legend's p-hat) is typeset by the actual LaTeX engine -- a real \hat{p}
+## rather than R plotmath's approximation. Other formats keep plotmath.
+if (knitr::is_latex_output()) {
+  suppressPackageStartupMessages(library(tikzDevice))
+}
+
 d0 <- droplevels(subset(iris, Species %in% c("versicolor", "virginica")))
 
 col_versicolor <- "#1b9e77"
@@ -57,12 +72,18 @@ lines(dens_virginica, col = col_virginica, lwd = 2, lty = 2)
 rug(d0$Petal.Width[d0$Species == "versicolor"], col = paste0(col_versicolor, "99"))
 rug(d0$Petal.Width[d0$Species == "virginica"], side = 3, col = paste0(col_virginica, "99"))
 
-legend("topright", bty = "n", legend = c("versicolor", "virginica"),
+legend_labels <- if (knitr::is_latex_output()) {
+  ## Raw LaTeX, typeset for real since this is running through tikzDevice.
+  c("$\\hat{p}(\\mathrm{versicolor})$", "$\\hat{p}(\\mathrm{virginica})$")
+} else {
+  c(expression(hat(italic(p))*"(versicolor)"), expression(hat(italic(p))*"(virginica)"))
+}
+
+legend("topright", bty = "n", legend = legend_labels,
        col = c(col_versicolor, col_virginica), lwd = 2, lty = c(1, 2))
 ```
 
- The results are shown in @fig-chunk1. They include Bayes classifier 
-$$
+The results are shown in @fig-chunk1. They include Bayes classifier $$
 \hat p(virginica | x) = \frac{\hat p(x \mid virginica)P(virginica)}{\hat p(x \mid virginica)P(virginica)+ \hat p(x \mid versicolor)P(versicolor)}
 $$
 
@@ -116,16 +137,20 @@ y_hi <- max(p_lda[i_max], p_glm[i_max])
 
 arrows(x0 = x_max, y0 = y_lo, x1 = x_max, y1 = y_hi,
        code = 3, angle = 90, length = 0.05, lwd = 1.5, col = "black")
-text(x_max, y_hi, sprintf("max gap = %.2f", gap[i_max]), pos = 3, cex = 0.85)
+text(x_max, (y_lo + y_hi) / 2, sprintf("max gap = %.2f", gap[i_max]), pos = 2, cex = 0.85)
 
 legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression", "Bayes (KDE plug-in)"),
        col = c(col_lda, col_glm, col_bayes), lwd = 2, lty = c(1, 2, 3))
 ```
 
-Interestingly, we couldn't carry out the comparison for virginica and setosa samples. The reason relies on two key facts
-
--   logistic regression model is fitted to maximize the expected likelihood on the dataset (maximum likelihood method)
--   the ranges of petal width do not intersect (the data is linearly separable), as shown in @tbl-petalwidth.
+Interestingly, we couldn't carry out the comparison for virginica and setosa samples because the fitting procedure for logistic regression will not converge. Let us examine the reason. Logistic regression model is fitted by maximizing the likelihood on the dataset with features $\mathbf{x_i}$ and provided labels $y_i$. In our case $$
+\overbrace{L(w, b)}^{\textrm{likelihood function}} = \prod_i \left\{ \sigma(wx_i + b)\ \ \ \ \mathrm{ when  }\ y_i = virginica \atop 1 - \sigma(wx_i + b)\ \mathrm{ when  }\ y_i = versicolor \right\}.
+$$ The key fact that the ranges of petal width do not intersect (the data is linearly separable), as seen from summary statistics for each species shown in @tbl-petalwidth. For any $\lambda$ we have $$
+\begin{aligned}
+\lambda (x_i - 1) > 0 \quad y_i = virginica\\
+\lambda (x_i - 1) < 0 \quad y_i = setosa
+\end{aligned}
+$$ {#eq-logistic3} Thus if we choose $w = \lambda$ and $b = -\lambda$ and let $\lambda \rightarrow \infty$, we see that $L(w, b)$ will approach 1 arbitrarily close. However it will never exactly one, since for any $x$ the logistic function $\sigma(x) < 1$.
 
 <!-- @tbl-petalwidth shows the range (minimum and maximum) of petal width for each of the three species. -->
 
@@ -136,6 +161,8 @@ Interestingly, we couldn't carry out the comparison for virginica and setosa sam
 species_levels <- levels(iris$Species)
 petal_width_tab <- data.frame(
   Species = species_levels,
+  Count = sapply(species_levels, function(s) 
+    sum(iris$Species == s)),
   Min  = sapply(species_levels, function(s) min(iris$Petal.Width[iris$Species == s])),
   Max  = sapply(species_levels, function(s) max(iris$Petal.Width[iris$Species == s])),
   Mean = sapply(species_levels, function(s) mean(iris$Petal.Width[iris$Species == s])),
@@ -145,19 +172,24 @@ petal_width_tab <- data.frame(
 ## single-line label for docx/jats so the pipe-table syntax isn't broken.
 sd_label <- if (knitr::is_html_output()) "Standard<br>Deviation" else "Standard Deviation"
 knitr::kable(petal_width_tab, digits = 2, row.names = FALSE, escape = FALSE,
-             col.names = c("Species", "Min", "Max", "Mean", sd_label))
+             col.names = c("Species", "Count", "Min", "Max", "Mean", sd_label))
 ```
 
-Since the ranges do not intersect, it is possible to fit model so that probabilities at dataset points are arbitrarily close to the true values zero and one. However they will never be exactly zero and one, since the logistic function $\sigma(x)$ (recall @eq-logistic) never attains those values.
+<!-- Since the ranges do not intersect, it is possible to fit model so that probabilities at dataset points are arbitrarily close to the true values zero and one. -->
 
-This problem does not occur with LDA. Fitting LDA can be done in either of two ways - by maximizing Fisher discriminant ratio, - by maximum likelihood.
+This problem does not occur with LDA. Fitting LDA can be done in either of two ways
 
-The existence of the optimal LDA model (under mild nondegeneracy assumptions) is assured by the fact that Fisher discriminant ratio is the same for collinear vectors, and thus follows from the fact that a continuous function always attains a maximum on a sphere, since the sphere is a compact set.
+-   by maximizing Fisher discriminant ratio for vector $\mathbf{w}$, or
+-   by maximum likelihood method where the parameters are the means $\mu_1, \mu_2$ and joint covariance matrix $\Sigma$ which form a generative model of data points $(\mathbf{x}_i, y_i)$.
 
-This argument obviously will not for logistic regression, since the objective, the expected likelihood is not invariant to rescaling the model's coefficients.
+When using the first approach, the existence of the optimal $\mathbf{w}$ is assured by the fact that Fisher discriminant ratio is the same for collinear vectors, and thus follows from the fact that a continuous function always attains a maximum on a sphere, a compact set.
 
-An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on the distribution of the variate for both classes if we take enough samples, the ranges will intersect. However given parameters from @tbl-petalwidth, it would take more than 400000 samples to have at least 50% chance to have have intersecting ranges. Another way is needed. We will provide several alternatives in the next section.
+This argument will not work for logistic regression, since the objective, the expected likelihood $L(\mathbf{w}, b)$ is *not* invariant to rescaling the model's coefficients.
+
+An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on the distribution of the variate for both classes if we take enough samples, the ranges will intersect. The probability of the intersection can be computed exactly using order statistics. Suppose we draw $n$ samples per class, and let $F_s$, and $F_v$, $f_v$ denote the distribution functions of the two classes and the density of the second class. The setosa range $[\min_i X_i, \max_i X_i]$ fails to intersect the virginica range precisely when $\max_i X_i < \min_j Y_j$ (the reverse ordering has negligible probability, as setosa's mean lies far below virginica's). Conditioning on the position of the minimum $\min_j Y_j$, whose density is $n\,(1-F_v(t))^{n-1} f_v(t)$, and using independence of the two samples, $$
+P\left(\max_i X_i < \min_j Y_j\right) = \int_{-\infty}^{\infty} F_s(t)^n \; n\,\bigl(1-F_v(t)\bigr)^{n-1} f_v(t)\, dt.
+$$ Evaluating this integral numerically with the plug-in parameters from @tbl-petalwidth (setosa: $\mu = 0.25$, $\sigma = 0.11$; virginica: $\mu = 2.03$, $\sigma = 0.27$) and solving for the sample size at which it drops to $1/2$ shows that one would need $n \approx 464\,000$ samples *per class* before the ranges have at least a 50% chance to intersect. The intuition for this enormous number is that the two means are more than six pooled standard deviations apart, so an intersection requires a joint extreme-tail event. Another way is needed. We will provide several alternatives in the next section.
 
 # Regularization of logistic regression
 
-
+T
