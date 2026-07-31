@@ -1,26 +1,17 @@
-# Firth logistic regression + PARTIAL Wu-Lin-Weng coupling.
+# LDA one-vs-one + PARTIAL Wu-Lin-Weng coupling.
 #
-# Same 3-class setup as three_class_firth_coupling.R (self-contained here):
-# bivariate Normal classes, identity covariance, means forming a 9-12-15
-# right triangle (right angle at class 1), with a pairwise Firth logistic
-# fit for each of the 3 class pairs.
-#
-# The full WLW (2004) coupling finds p minimizing the least-squares
-# objective built from ALL THREE pairwise terms:
-#     L(p) = sum_{i<j} (r_ji*p_i - r_ij*p_j)^2      over (1,2), (1,3), (2,3)
-#
-# Here we instead build the objective from only TWO of those three terms
-# -- "partial" coupling -- dropping one pairwise comparison entirely from
-# the optimization (though all 3 Firth models are still fit; the dropped
-# pair's classifier just never enters the coupling objective). There are
-# 3 ways to pick 2 of 3 terms, i.e. 3 ways to choose which pair to drop:
-#     drop (1,2): keep (1,3) and (2,3)
-#     drop (1,3): keep (1,2) and (2,3)
-#     drop (2,3): keep (1,2) and (1,3)
-# We solve all three with the same fixed-point iteration WLW uses (it's a
-# general quadratic-minimization-on-the-simplex solver; it doesn't care how
-# Q was built), plot argmax decision regions for each, and overlay the true
-# Bayes boundary plus the full (3-term) WLW result for reference.
+# Same 3-class setup as three_class_firth_coupling.R / three_class_firth_partial_wlw.R
+# (self-contained here): bivariate Normal classes, identity covariance, means
+# forming a 9-12-15 right triangle (right angle at class 1), 150 points per
+# class. The base pairwise (one-vs-one) classifier here is LDA instead of
+# Firth logistic regression -- one MASS::lda fit per class pair, the same
+# construction as pair_fits_lda / pr_pair_lda in three_class_firth_coupling.R
+# -- combined with the full (3-term) Wu-Lin-Weng coupling and with the same
+# three "partial" coupling variants (each dropping one pairwise term from the
+# coupling objective) used in three_class_firth_partial_wlw.R. This is the
+# LDA analogue of that script's four argmax figures, for a direct comparison
+# of how much the choice of base one-vs-one classifier (Firth vs. LDA)
+# matters for the partial-coupling behavior.
 
 set.seed(1)
 
@@ -41,60 +32,58 @@ dat <- data.frame(
   class = factor(rep(1:3, each = n))
 )
 
-## ---- 3. Firth logistic regression (multi-dim design matrix) ---------------
-firth_logistic <- function(X, y, tol = 1e-8, max_iter = 50) {
-  X <- cbind(Intercept = 1, X)
-  beta <- rep(0, ncol(X))
-  for (i in 1:max_iter) {
-    eta  <- as.vector(X %*% beta)
-    p_i  <- plogis(eta)
-    W    <- p_i * (1 - p_i)
-    XtWX <- t(X) %*% (X * W)
-    XtWX_inv <- solve(XtWX)
-    h <- W * rowSums((X %*% XtWX_inv) * X)
-    U_star <- t(X) %*% (y - p_i + h * (0.5 - p_i))
-    step <- as.vector(XtWX_inv %*% U_star)
-    beta <- beta + step
-    if (max(abs(step)) < tol) break
-  }
-  list(beta = beta, n_iter = i)
-}
-## Raw linear score (log-odds of hi over lo), at full precision -- this is
-## what predict_firth() below exponentiates via plogis(). Keeping it around
-## unsaturated is what the partial-coupling closed form needs (see the note
-## by wlw_partial below).
-predict_firth_eta <- function(fit, Xnew) as.vector(cbind(1, Xnew) %*% fit$beta)
-predict_firth <- function(fit, Xnew) plogis(predict_firth_eta(fit, Xnew))
-
-## ---- 4. Fit one Firth model per class pair ---------------------------------
+## ---- 3. One-vs-one LDA, via the closed-form pooled-covariance discriminant
+## (rather than MASS::lda + predict.lda's posterior), so the pairwise
+## comparison is available as a raw linear log-odds score at full floating-
+## point precision. predict.lda()$posterior rounds to *exactly* 1.0 (or 0.0)
+## once the discriminant score exceeds about 37 in magnitude -- routine here,
+## since the classes are 9-15 units apart with unit variance. That's
+## harmless for the *full* 3-term coupling below (the other two pairwise
+## terms keep each class's Q[t,t] away from zero regardless), but it
+## silently destroys exactly the information the *partial*-coupling closed
+## form needs: far from the hub class, deciding between the two dropped-pair
+## classes comes down to the *difference* of two individually-huge log-odds,
+## and that difference is a smooth, well-behaved quantity even where each
+## log-odds on its own has long since saturated a raw probability to 0/1.
 pairs <- combn(3, 2, simplify = FALSE)   # (1,2) (1,3) (2,3)
-pair_fits <- list()
+pair_coef <- list()
 for (pr in pairs) {
   lo <- pr[1]; hi <- pr[2]
-  sub <- dat[dat$class %in% c(lo, hi), ]
-  Xp <- as.matrix(sub[, c("x", "y")])
-  yp <- as.integer(sub$class == hi)
-  fit <- firth_logistic(Xp, yp)
-  pair_fits[[paste0(lo, "_", hi)]] <- fit
-  cat(sprintf("Firth pair (%d,%d): beta = (%.4f, %.4f, %.4f), iters = %d\n",
-              lo, hi, fit$beta[1], fit$beta[2], fit$beta[3], fit$n_iter))
+  Xlo <- as.matrix(dat[dat$class == lo, c("x", "y")])
+  Xhi <- as.matrix(dat[dat$class == hi, c("x", "y")])
+  n_lo <- nrow(Xlo); n_hi <- nrow(Xhi)
+  mlo <- colMeans(Xlo); mhi <- colMeans(Xhi)
+  Sigma <- ((n_lo - 1) * cov(Xlo) + (n_hi - 1) * cov(Xhi)) / (n_lo + n_hi - 2)
+  Sinv  <- solve(Sigma)
+  w <- as.numeric(Sinv %*% (mhi - mlo))
+  b <- -0.5 * as.numeric(mhi %*% Sinv %*% mhi - mlo %*% Sinv %*% mlo) +
+       log(n_hi / n_lo)
+  pair_coef[[paste0(lo, "_", hi)]] <- list(w = w, b = b)
 }
-cat("\n")
+
+## Raw signed log-odds of class hi over class lo (lo < hi), at full
+## precision -- positive favors hi. This is what MASS::lda's linear
+## discriminant reduces to for two groups; computing it directly (instead of
+## going through predict.lda) is what lets it stay informative however far
+## Xnew is from the training data.
+eta_pair_raw <- function(lo, hi, Xnew) {
+  cf <- pair_coef[[paste0(lo, "_", hi)]]
+  as.numeric(Xnew %*% cf$w + cf$b)
+}
 
 ## Signed log-odds of class a over class b (a != b, either order) --
-## positive favors a. Never saturates, unlike plogis() of this quantity.
+## positive favors a.
 log_odds <- function(a, b, Xnew) {
   lo <- min(a, b); hi <- max(a, b)
-  fit <- pair_fits[[paste0(lo, "_", hi)]]
-  eta <- predict_firth_eta(fit, Xnew)
+  eta <- eta_pair_raw(lo, hi, Xnew)
   if (a == hi) eta else -eta
 }
 
-## Pr(class a | class a or b) -- used only by the full coupling below, where
-## saturation is harmless.
+## Pr(class a | class a or b) at points Xnew, for any a != b -- used only by
+## the full coupling below, where saturation is harmless.
 pr_pair <- function(a, b, Xnew) plogis(log_odds(a, b, Xnew))
 
-## ---- 5. Wu-Lin-Weng coupling, generalized to an arbitrary subset of pairs -
+## ---- 4. Wu-Lin-Weng coupling, generalized to an arbitrary subset of pairs -
 ## `include`: a list of pairs, e.g. list(c(1,2), c(1,3)), that defines which
 ## terms of the least-squares objective L(p) = sum (r_ji p_i - r_ij p_j)^2
 ## are included. Passing all 3 pairs reproduces the original full WLW
@@ -139,12 +128,10 @@ wlw_full   <- function(r) wlw_couple_general(r, all_pairs)
 ## eta_ik = log(p_i/p_k) is pair (i,k)'s signed log-odds. We compute this
 ## directly from the RAW log-odds (log_odds(), never saturated) via the
 ## standard softmax stabilization (subtract the max before exponentiating),
-## rather than first collapsing each side to a probability via plogis() and
-## then dividing: with means 9-15 units apart, plogis() of these log-odds
-## rounds to exactly 1.0 (or 0.0) once the magnitude exceeds about 37, which
-## discards exactly the information needed to tell which of i, j actually
-## dominates far from class k -- that was the source of the earlier
-## salt-and-pepper noise, not the iteration itself.
+## rather than first collapsing each side to a probability and then
+## dividing -- the latter is what produced the numerical noise before: once
+## both r[i,k] and r[j,k] round to exactly 1.0, their ratio carries no
+## information about which of i, j actually dominates.
 couple_predict_partial <- function(Xnew, i, j, k) {
   eta_i <- log_odds(i, k, Xnew)   # positive favors i over k
   eta_j <- log_odds(j, k, Xnew)   # positive favors j over k
@@ -161,8 +148,9 @@ couple_predict_drop12 <- function(Xnew) couple_predict_partial(Xnew, i = 1, j = 
 couple_predict_drop13 <- function(Xnew) couple_predict_partial(Xnew, i = 1, j = 3, k = 2)
 couple_predict_drop23 <- function(Xnew) couple_predict_partial(Xnew, i = 2, j = 3, k = 1)
 
-## Clamp pairwise probabilities away from exactly 0/1 (well-separated Firth
-## fits can underflow there, which would make some Q[t,t] exactly 0).
+## Clamp pairwise probabilities away from exactly 0/1 (well-separated LDA
+## fits can be numerically exactly 0/1, which would make some Q[t,t] exactly
+## zero).
 clamp01 <- function(p, eps = 1e-10) pmin(pmax(p, eps), 1 - eps)
 
 couple_predict <- function(Xnew, couple_fn, pr_pair_fn = pr_pair) {
@@ -180,7 +168,7 @@ couple_predict <- function(Xnew, couple_fn, pr_pair_fn = pr_pair) {
   Pm
 }
 
-## ---- 6. Exact Bayes-optimal classifier from the TRUE generating model -----
+## ---- 5. Exact Bayes-optimal classifier from the TRUE generating model -----
 bayes_predict <- function(Xnew) {
   D <- cbind(
     rowSums((Xnew - matrix(mu1, nrow(Xnew), 2, byrow = TRUE))^2),
@@ -193,7 +181,7 @@ bayes_predict <- function(Xnew) {
   ex / rowSums(ex)
 }
 
-## ---- 7. Validate on the training data --------------------------------------
+## ---- 6. Validate on the training data --------------------------------------
 Xtr <- as.matrix(dat[, c("x", "y")])
 acc <- function(P) mean(max.col(P) == as.integer(dat$class))
 
@@ -203,12 +191,12 @@ Ptr_drop13 <- couple_predict_drop13(Xtr)
 Ptr_drop23 <- couple_predict_drop23(Xtr)
 Ptr_bayes  <- bayes_predict(Xtr)
 
-cat(sprintf(paste0("Training accuracy -- full WLW: %.1f%%   drop(1,2): %.1f%%   ",
+cat(sprintf(paste0("Training accuracy (LDA one-vs-one) -- full WLW: %.1f%%   drop(1,2): %.1f%%   ",
                     "drop(1,3): %.1f%%   drop(2,3): %.1f%%   Bayes: %.1f%%\n\n"),
             100 * acc(Ptr_full), 100 * acc(Ptr_drop12),
             100 * acc(Ptr_drop13), 100 * acc(Ptr_drop23), 100 * acc(Ptr_bayes)))
 
-## ---- 8. Grid over the rectangle bounding the three means -------------------
+## ---- 7. Grid over the rectangle bounding the three means -------------------
 margin <- 4
 gx <- seq(min(means[, 1]) - margin, max(means[, 1]) + margin, length.out = 100)
 gy <- seq(min(means[, 2]) - margin, max(means[, 2]) + margin, length.out = 100)
@@ -227,7 +215,7 @@ add_bayes_boundary <- function() {
           add = TRUE, drawlabels = FALSE, lwd = 2, lty = 2, col = "black")
 }
 
-## ---- 9. Visualize: argmax regions for the 3 partial-coupling variants -----
+## ---- 8. Visualize: argmax regions for the 3 partial-coupling variants -----
 ## (plus the full 3-term WLW coupling as a reference panel)
 dir <- path.expand("~/ams")
 class_cols <- c("#e41a1c", "#4daf4a", "#377eb8")   # red, green, blue
@@ -248,14 +236,14 @@ plot_argmax <- function(pred_col, title, file_stub) {
 }
 
 plot_argmax(grid$pred_drop12,
-            "Firth + partial WLW coupling\n(objective drops pair 1-2, keeps 1-3 & 2-3)",
-            "three_class_firth_partial_wlw_drop12_argmax.png")
+            "LDA one-vs-one + partial WLW coupling\n(objective drops pair 1-2, keeps 1-3 & 2-3)",
+            "three_class_lda_partial_wlw_drop12_argmax.png")
 plot_argmax(grid$pred_drop13,
-            "Firth + partial WLW coupling\n(objective drops pair 1-3, keeps 1-2 & 2-3)",
-            "three_class_firth_partial_wlw_drop13_argmax.png")
+            "LDA one-vs-one + partial WLW coupling\n(objective drops pair 1-3, keeps 1-2 & 2-3)",
+            "three_class_lda_partial_wlw_drop13_argmax.png")
 plot_argmax(grid$pred_drop23,
-            "Firth + partial WLW coupling\n(objective drops pair 2-3, keeps 1-2 & 1-3)",
-            "three_class_firth_partial_wlw_drop23_argmax.png")
+            "LDA one-vs-one + partial WLW coupling\n(objective drops pair 2-3, keeps 1-2 & 1-3)",
+            "three_class_lda_partial_wlw_drop23_argmax.png")
 plot_argmax(grid$pred_full,
-            "Firth + full (3-term) WLW coupling  [reference]",
-            "three_class_firth_full_wlw_argmax_reference.png")
+            "LDA one-vs-one + full (3-term) WLW coupling  [reference]",
+            "three_class_lda_full_wlw_argmax_reference.png")

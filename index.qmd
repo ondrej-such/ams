@@ -157,7 +157,7 @@ $$ {#eq-logistic3} Thus if we choose $w = \lambda$ and $b = -\lambda$ and let $\
 ```{r}
 #| label: tbl-petalwidth
 #| echo: false
-#| tbl-cap: Range of Petal.Width (cm) by species
+#| tbl-cap: Summary statistics of Petal.Width (cm) by species (sample count, minimum, maximum, mean, and standard deviation)
 species_levels <- levels(iris$Species)
 petal_width_tab <- data.frame(
   Species = species_levels,
@@ -328,9 +328,11 @@ Both coupling algorithms recover the Bayes decision boundaries closely near the 
 
 ## Partial pairwise coupling
 
-Wu-Lin-Weng coupling finds the probability vector $p$ minimizing $L(p) = \sum_{i<j}(r_{ji}\,p_i - r_{ij}\,p_j)^2$, a sum over all $\binom{3}{2}=3$ pairwise terms. To see how much any single pairwise comparison actually contributes to the final decision regions, we solve the same fixed-point iteration with one term dropped entirely from the objective — the corresponding pairwise Firth fit is still computed but never enters the coupling step — giving three "partial coupling" variants, one for each pair that can be dropped.
+Wu-Lin-Weng coupling finds the probability vector $p$ minimizing $L(p) = \sum_{i<j}(r_{ji}\,p_i - r_{ij}\,p_j)^2$, a sum over all $\binom{3}{2}=3$ pairwise terms. To see how much any single pairwise comparison actually contributes to the final decision regions, we drop one term entirely from the objective — the corresponding pairwise Firth fit is still computed but never enters the coupling step — giving three "partial coupling" variants, one for each pair that can be dropped.
 
-@fig-partial-coupling shows the argmax regions for all three partial-coupling variants alongside the full three-term coupling as a reference. Dropping the pair $(i,j)$ predictably degrades the boundary specifically between classes $i$ and $j$ (since the coupling step no longer sees that pairwise comparison directly, only indirectly through the other two pairs), while leaving the region boundaries involving the third class comparatively unaffected.
+With only three classes, dropping pair $(i,j)$ leaves exactly two terms in the objective, for pairs $(i,k)$ and $(j,k)$ with $k$ the remaining class. These two terms are independent of each other (neither involves both $p_i$ and $p_j$), so both can be driven to exactly zero at once: $r_{ki}\,p_i = r_{ik}\,p_k$ and $r_{kj}\,p_j = r_{jk}\,p_k$. This pins down the class ratios directly from the two kept pairwise odds, $p_i:p_j:p_k = \frac{r_{ik}}{r_{ki}} : \frac{r_{jk}}{r_{kj}} : 1$, with no optimization needed at all — unlike the full three-term objective, which generally has no exact solution and does need the fixed-point iteration. We evaluate this ratio from each pairwise classifier's raw log-odds rather than from its probability output: with class means 9–15 units apart, a pairwise probability routinely saturates to exactly $0$ or $1$ in floating point (any log-odds beyond about $37$ rounds a double-precision probability to $1.0$ exactly), which would silently discard precisely the information needed to tell $i$ and $j$ apart far from class $k$ — namely, the *difference* between two individually-huge log-odds, which stays well-behaved even once each one on its own has long since saturated a probability.
+
+@fig-partial-coupling shows the argmax regions for all three partial-coupling variants alongside the full three-term coupling as a reference. Dropping the pair $(i,j)$ predictably degrades the boundary specifically between classes $i$ and $j$ (since the coupling step no longer sees that pairwise comparison directly, only indirectly through their shared comparisons with class $k$), while leaving the region boundaries involving the third class comparatively unaffected.
 
 ::: {#fig-partial-coupling layout-ncol=2}
 ![Full coupling (reference)](three_class_firth_full_wlw_argmax_reference.png){#fig-partial-full}
@@ -342,4 +344,18 @@ Wu-Lin-Weng coupling finds the probability vector $p$ minimizing $L(p) = \sum_{i
 ![Drop pair (2,3)](three_class_firth_partial_wlw_drop23_argmax.png){#fig-partial-drop23}
 
 Argmax decision regions under full (3-term) Wu-Lin-Weng coupling versus dropping one pairwise term from the coupling objective, with the true Bayes boundary overlaid (dashed).
+:::
+
+To check whether this partial-coupling behavior is a quirk of Firth logistic regression or a property of the coupling step itself, we repeat the same experiment with LDA as the one-vs-one base classifier instead: one binary LDA fit per class pair, combined with the same full coupling and closed-form partial coupling. @fig-lda-partial-coupling shows the LDA analogue of @fig-partial-coupling. The same qualitative pattern holds — dropping pair $(i,j)$ degrades the boundary between classes $i$ and $j$ specifically — confirming this is a property of which pairwise comparisons feed the coupling objective, independent of the particular one-vs-one classifier used to produce them.
+
+::: {#fig-lda-partial-coupling layout-ncol=2}
+![Full coupling (reference)](three_class_lda_full_wlw_argmax_reference.png){#fig-lda-partial-full}
+
+![Drop pair (1,2)](three_class_lda_partial_wlw_drop12_argmax.png){#fig-lda-partial-drop12}
+
+![Drop pair (1,3)](three_class_lda_partial_wlw_drop13_argmax.png){#fig-lda-partial-drop13}
+
+![Drop pair (2,3)](three_class_lda_partial_wlw_drop23_argmax.png){#fig-lda-partial-drop23}
+
+Argmax decision regions under full (3-term) Wu-Lin-Weng coupling versus dropping one pairwise term from the coupling objective, with LDA as the one-vs-one base classifier and the true Bayes boundary overlaid (dashed).
 :::
