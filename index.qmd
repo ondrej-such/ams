@@ -29,7 +29,7 @@ For instance, we may assume that we roll a perfectly symmetrical dice or, that s
 In practical applications, however, the question to quantify probability is often asked *repeatedly* with varying context. One naturally expects that the answer will vary depending on the context. For instance, a bank may wonder what is the probability that the borrower will repay a loan. The context could be provided by the current financial disclosure of the applicant. To answer the question it is customary to build a *probabilistic model*.
 <!-- which is really an algorithm taking input (the context) and producing the desired probability as its output. -->
 
-There is a multitude of ways to build different models, and thus one may ask how to compare their quality. Non-probabilistic ways of comparison use the $2\times 2$ contingency matrix with rows and columns corresponding to predictions (probability > 0.5) and observed outcomes. One can use any number of metrics for comparison starting from accuracy (ratio of the diagonal entries to the whole matrix), through precision and recall to Matthews correlation coefficient. However, this evaluation disregards the probabilistic information.
+There is a multitude of ways to build different models, and thus one may ask how to compare their quality. Non-probabilistic ways of comparison use the $2\times 2$ contingency matrix with rows and columns corresponding to predictions (probability > 0.5) and observed outcomes. One can use any number of metrics for comparison starting from accuracy (ratio of the sum diagonal entries to that of the whole matrix), through precision and recall to Matthews correlation coefficient [@yule1912methods; @chicco2021matthews]. However, this approach disregards much of the probabilistic information.
 
 Historically, the question of measuring quality of probabilistic predictions arose in the context of weather forecasting. Since early 20th century weather forecasts are typically  probabilistic. A simple check of how good a weather forecasters (or more precisely their models) are, is to compare their predictions with climate observations. *Climate* is obtained by computing the expected event frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be close.
 
@@ -425,7 +425,7 @@ ip <- par(fig = c(0.13, 0.52, 0.50, 0.95), new = TRUE,
 ## whatever's behind it in the main plot (e.g. the P = 0.5 line) can't show
 ## through the inset's axis-label area.
 plot.new()
-rect(-1e6, -1e6, 1e6, 1e6, col = "white", border = NA, xpd = TRUE)
+rect(0, 0, 1, 1, col = "white", border = NA, xpd = TRUE)
 par(new = TRUE)
 plot(xg, d_true_A, type = "l", lwd = 1.5, col = col_A,
      xlab = "", ylab = "", ylim = c(0, peak_h * 1.3),
@@ -641,19 +641,13 @@ add_bayes_boundary3 <- function() {
           add = TRUE, drawlabels = FALSE, lwd = 2, lty = 2, col = "black")
 }
 
-plot_argmax_panel <- function(pred_col, title, show_legend = FALSE) {
+plot_argmax_panel <- function(pred_col, title) {
   image(gx3, gy3, matrix(pred_col, nx3, ny3),
         col = adjustcolor(class_cols3, alpha.f = 0.15), breaks = c(0.5, 1.5, 2.5, 3.5),
-        xlab = "x", ylab = "y", asp = 1, main = title)
+        xlab = "", ylab = "", asp = 1, main = title)
   points(dat3$x, dat3$y, col = class_cols3[dat3$class], pch = 16, cex = 0.4)
   points(means3[, 1], means3[, 2], pch = 4, lwd = 3, cex = 1.3)
   add_bayes_boundary3()
-  if (show_legend) {
-    legend("topright", bty = "n", cex = 0.8,
-           legend = c(paste("class", 1:3), "Bayes boundary"),
-           col = c(class_cols3, "black"), pch = c(16, 16, 16, NA),
-           lty = c(NA, NA, NA, 2), lwd = 2)
-  }
 }
 
 drops <- list(drop12 = c(i = 1, j = 2, k = 3),
@@ -661,14 +655,27 @@ drops <- list(drop12 = c(i = 1, j = 2, k = 3),
               drop23 = c(i = 2, j = 3, k = 1))
 drop_titles <- c(drop12 = "drop pair (1,2)", drop13 = "drop pair (1,3)", drop23 = "drop pair (2,3)")
 
-par(mfrow = c(3, 2), mar = c(4, 4, 3, 1))
-first_panel <- TRUE
+## Layout: a slim legend row spanning both columns on top, then the 3x2
+## grid of panels below.
+layout(matrix(c(1, 1,
+                 2, 3,
+                 4, 5,
+                 6, 7), nrow = 4, byrow = TRUE),
+       heights = c(0.6, 3, 3, 3))
+
+par(mar = c(0, 0, 0, 0))
+plot.new()
+legend("center", bty = "n", cex = 1, horiz = TRUE,
+       legend = c(paste("class", 1:3), "", "Bayes boundary"),
+       col = c(class_cols3, NA, "black"), pch = c(16, 16, 16, NA, NA),
+       lty = c(NA, NA, NA, NA, 2), lwd = 2, seg.len = 2, text.width = NA)
+
+par(mar = c(4, 4, 3, 1))
 for (dn in names(drops)) {
   d <- drops[[dn]]
   pred_lda   <- max.col(couple_predict_partial(Xg3, d["i"], d["j"], d["k"], lda_log_odds))
   pred_firth <- max.col(couple_predict_partial(Xg3, d["i"], d["j"], d["k"], firth_log_odds))
-  plot_argmax_panel(pred_lda, paste0("LDA, ", drop_titles[dn]), show_legend = first_panel)
+  plot_argmax_panel(pred_lda, paste0("LDA, ", drop_titles[dn]))
   plot_argmax_panel(pred_firth, paste0("Firth LR, ", drop_titles[dn]))
-  first_panel <- FALSE
 }
 ```
