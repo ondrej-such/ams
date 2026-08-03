@@ -29,9 +29,9 @@ For instance, we may assume that we roll a perfectly symmetrical dice or, that s
 In practical applications, however, the question to quantify probability is often asked *repeatedly* with varying context. One naturally expects that the answer will vary depending on the context. For instance, a bank may wonder what is the probability that the borrower will repay a loan. The context could be provided by the current financial disclosure of the applicant. To answer the question it is customary to build a *probabilistic model*.
 <!-- which is really an algorithm taking input (the context) and producing the desired probability as its output. -->
 
-There is a multitude of ways to build different models, and thus one may ask how to compare their quality. Non-probabilistic ways of comparison use the 2x2 contingency matrix with rows and columns corresponding to predictions (probability > 0.5) and observed outcomes. One can use any number of metrics for comparison starting from accuracy (ratio of the diagonal entries to the whole matrix), through precision and recall to Matthews correlation coefficient. However, this evaluation disregards the probabilistic information.
+There is a multitude of ways to build different models, and thus one may ask how to compare their quality. Non-probabilistic ways of comparison use the $2\times 2$ contingency matrix with rows and columns corresponding to predictions (probability > 0.5) and observed outcomes. One can use any number of metrics for comparison starting from accuracy (ratio of the diagonal entries to the whole matrix), through precision and recall to Matthews correlation coefficient. However, this evaluation disregards the probabilistic information.
 
-Historically, the question of measuring quality of probabilistic predictions gained attention in the context of weather forecasting. Since early 20th century weather forecasts are typically  probabilistic. A simple check of how good a weather forecasters (or more precisely their models) are, is to compare their predictions with climate observations. *Climate* is obtained by computing the expected event frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be pretty close.
+Historically, the question of measuring quality of probabilistic predictions arose in the context of weather forecasting. Since early 20th century weather forecasts are typically  probabilistic. A simple check of how good a weather forecasters (or more precisely their models) are, is to compare their predictions with climate observations. *Climate* is obtained by computing the expected event frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be close.
 
 There is an even finer method to compare forecast's fidelity. We can subdivide the probability interval $[0,1]$ into (nonintersecting) subintervals. For each subinterval, we compare the observed frequency of rain on days when the forecast fell into it [@zadrozny2001obtaining]. Suppose for instance that one of the subintervals was $I_m = [0.45, 0.55]$. We would expect that the probability $p$ of rain on days when forecast fell into $I_m$ would be around 0.5 A model that matches this expectation reasonably well is said to be *well-calibrated*. Calibration is typically judged visually by preparing a reliability diagram. or by computing a score such as expected calibration error.
 
@@ -59,9 +59,9 @@ Note that  the model allows predicting probabilities in the whole range $(0,1)$ 
 \end{aligned}
 $$ {#eq-logistic2}
 
-The two principal examples of logistic models are linear discriminant analysis (LDA) and logistic regression. They both yield prediction in the form @eq-logistic, but they differ in their parameters, as well as in the methods to estimate them. Although logistic regression is more commonly used,  they are considered to give approximately the same results. We can illustrate it on the famous iris dataset. The iris dataset was created in 1930's by Edgar Anderson, an American botanist. It contains four measurements (features) of three iris species
+The two principal examples of logistic models are linear discriminant analysis (LDA) and logistic regression [@james2021introduction]. They both yield prediction in the form @eq-logistic, but they differ in their parameters, as well as in the methods to estimate them. Although logistic regression is more commonly used,  they are considered to give approximately the same results. We can illustrate it on the famous iris dataset. The iris dataset was created in 1930's by Edgar Anderson, an American botanist. It contains four measurements (features) of three iris species
 
--   iris versicolor L. (L. indicates catalogued by famous Swedish biologist Carl Linnaeus),
+-   iris versicolor L. (L. indicates it was named by famous Swedish biologist Carl Linnaeus),
 -   iris virginica L.,
 -   iris setosa.
 
@@ -255,12 +255,15 @@ $$ Evaluating this integral numerically with the plug-in parameters from @tbl-pe
 
 # Regularization of logistic regression
 
-There are two principal paradigms to fit a logistic model in the case of linear separation
+There are two principal paradigms to fit a logistic regression in the case of linear separation
 
 - applying prior on coefficients as typical in Bayesian statistics, or
 - extending Bernoulli model used in logistic regression to what we could call a *fractional Bernoulli model*.
 
-In the first paradigm uses the Bayes formula $\textrm{posterior} \propto \textrm{likelihood}\times \textrm{prior}$ to replace maximization of log likelihood with
+In the first paradigm one uses the Bayes formula 
+$$\textrm{posterior} \propto \textrm{likelihood}\times \textrm{prior}
+$$
+to replace maximization of log likelihood with
 $$
 \max_{\mathbf{w}, b}  \log L(\mathbf{w},b)  + \log (\textrm{prior}(\mathbf{w})).
 $$
@@ -268,37 +271,31 @@ There are several commonly used priors
 
 - L2 data dependent regularization, where the prior is the multivariate normal distribution; this method mirrors the classical Tikhonov's regularization [@tikhonov1963solution],
 - L1 data dependent regularization, where the prior is the multivariate Cauchy distribution [@friedman2010regularization]; this method encourages model's sparsity,
-- Firth logistic regression, where one uses Jeffrey's prior [@firth1993bias]; this method is canonical,
-- weakly informative distribution proposed in [@gelman2008weakly],
+- Firth logistic regression, where one uses Jeffrey's prior [@firth1993bias],
+- weakly informative Cauchy distribution proposed in [@gelman2008weakly],
 - multidimensional Student's $t$-distribution [@ghosh2018use].
 
 The first two methods use crossvalidation to select the scale of the prior. The last two methods do not take the data into account, they only require that they are suitably transformed.
 
-The second paradigm has been used in machine learning under names like Platt's scaling [@platt1999probabilistic] or label smoothing [@muller2019does]. In essence it enlarges the training dataset by replacing each sample in a group with label $y$ with $R$ samples with label $y$ and additional one sample with opposite label. This simple trick transforms a dataset with separable groups into a dataset where the two groups are inseparable. The way to choose $R$ is inspired by Laplace's (often ridiculed) work on calculating probability that sun will tomorrow. It starts with a prior on probabilities and uses Bayes theorem to derive the posterior after $k$ events of one kind. Platt in his paper on SVM proposed using Laplace prior---the uniform prior on interval $[0,1]$. Somewhat overlooked was that Jeffrey's prior is a natural alternative. @tbl-prior-r summarizes the two choices, the value of $R$ each implies, and the name we use for the resulting method throughout the rest of the paper.
+The second paradigm has been used in machine learning under names like Platt's scaling [@platt1999probabilistic] or label smoothing [@muller2019does]. In essence it enlarges the training dataset by replacing each sample in a group with label $y$ with $R$ samples with label $y$ and additional one sample with opposite label. This simple trick transforms a dataset with separable groups into a dataset where the two groups are inseparable. The way to choose $R$ is inspired by Laplace's (often ridiculed) work on calculating probability that the sun will rise tomorrow [@laplace1814essai]. It starts with a prior on probability and uses Bayes theorem to derive the posterior after a sequence of observed outcomes. Platt in his paper on  probabilistic modelling for support vector machines used Laplace prior---the uniform prior on interval $[0,1]$. Somewhat overlooked was that Jeffrey's prior is a natural alternative. @tbl-prior-r summarizes the two choices, the value of $R$ each implies, and the name we use for the resulting method throughout the rest of the paper.
 
 ```{r}
 #| label: tbl-prior-r
 #| echo: false
-#| tbl-cap: Two choices of prior on the label probability $p$, the pseudocount $R$ they imply via the Beta posterior mean $(k+R)/(n+2R)$, and the name given to the resulting scaling method.
+#| tbl-cap: Two choices of prior on the label probability $p$, the pseudocount $R$ they imply via the Beta posterior mean , and the name given to the resulting scaling method.
 prior_tab <- data.frame(
   Prior      = c("Laplace (uniform)", "Jeffreys"),
   Beta_prior = c("Beta(1, 1)", "Beta(1/2, 1/2)"),
-  R          = c("1", "1/2"),
-  Method     = c("Platt scaling", "SAH scaling")
+  R          = c("N + 1", "2N+1"),
+  Method     = c("Platt scaling", "SAH scaling [@such2025canonical]")
 )
 knitr::kable(prior_tab, row.names = FALSE,
-             col.names = c("Prior", "Beta prior", "Implied R", "Method name"))
+             col.names = c("Prior", "Prior", "Implied R", "Method name"))
 ```
 
-```{r}
-#| label: load-calibration-ratios
-#| echo: false
-#| include: false
-ratios_df <- read.csv(path.expand("calibration_ratios.csv"))
-M_reps <- length(unique(ratios_df$rep))
-```
 
-To compare how well each regularized model recovers the true class probability, we ran a Monte Carlo simulation with $M=`r M_reps`$ replications: repeatedly sampling $N=50$ points per class from two unit-variance Normal distributions with means 6 apart, fitting L1-penalized logistic regression, L2-penalized logistic regression, Firth logistic regression, Platt scaling, Platt scaling with halved pseudocounts ("2N" targets), LDA, and Bayesian logistic regression (posterior mode) under two data-independent weakly informative priors — the Cauchy(0, 2.5) default of Gelman et al. (2008) and a lighter-tailed Student-$t_7$(0, 2.5) variant — to each sample, and recording, at every sampled point, the ratio of each model's predicted to the true (Bayes-optimal) probability of being class B. Unlike Firth's Jeffreys-prior penalty, which depends on the design matrix, both weakly informative priors are fixed in advance; the Cauchy's heavy tails let strongly informative data override the prior, while the $t_7$ shrinks large coefficients more aggressively. @fig-one-dataset-predictions shows what a single replication looks like: the predicted-probability curve from each of the eight models, together with the true Bayes curve, fitted to one simulated dataset. @fig-calibration-ratios then shows the resulting distribution of $\log_{10}(\hat{p}/p_{\text{true}})$ for each method, restricted to points sampled from class A; a value of 0 indicates perfect calibration at that point, positive values indicate the model overestimated the true probability, and negative values indicate underestimation. We restrict to class-A points because $p_{\text{true}}$ is bounded away from $1$ there: class A sits 6 SDs from class B, so $p_{\text{true}}$ only approaches $1$ for a class-A point that is itself several SDs from its own mean, which essentially never happens. Class-B points, by contrast, almost always have $p_{\text{true}} \approx 1$, where $\log p$ is insensitive to the model's actual log-odds and the ratio is uninformative regardless of how wrong the model is. Nothing is lost by dropping class-B points: the whole setup — both Gaussians and all eight fitting procedures — is symmetric under swapping the class labels and reflecting $x$ about the midpoint, so class-A and class-B behavior are mirror images in distribution. Because the two class means are 6 SDs apart, the two classes end up linearly separable in $x$ (some threshold perfectly splits class A from class B) in the large majority of replications; in that regime, weakly-regularized models can drive predicted probabilities toward 0/1, showing up here as strongly negative log-ratios.
+Let us compare the predictions of these models. We shall apply them to a simulated data sets where 
+we draw 50 samples from two normal distributions with unit variance and means at distance six. Since we generated the data, we can also include Bayes classifier. The results are shown in @fig-one-dataset-predictions. We can see that all models found the optimal separation point which lies midway between the means. However, they do differ significantly with LDA and data dependent L1 being closest to the Bayes classifier. The first is unsurprising, since our generative model matches exactly the assumption of LDA, but the latter is not expected.
 
 ```{r}
 #| label: fig-one-dataset-predictions
@@ -436,6 +433,19 @@ text(mu2, dnorm(mu2, mu2, sdv), "class B", col = col_B, cex = 0.75, pos = 3)
 par(ip)
 ```
 
+
+```{r}
+#| label: load-calibration-ratios
+#| echo: false
+#| include: false
+ratios_df <- read.csv(path.expand("calibration_ratios.csv"))
+M_reps <- length(unique(ratios_df$rep))
+```
+
+<!-- To compare how well each regularized model recovers the true class probability, we ran a Monte Carlo simulation with $M=`r M_reps`$ replications: repeatedly sampling $N=50$ points per class from two unit-variance normal distributions with means 6 apart, fitting L1-penalized logistic regression, L2-penalized logistic regression, Firth logistic regression, Platt scaling, Platt scaling with halved pseudocounts ("2N" targets), LDA, and Bayesian logistic regression (posterior mode) under two data-independent weakly informative priors — the Cauchy(0, 2.5) default of Gelman et al. (2008) and a lighter-tailed Student-$t_7$(0, 2.5) variant — to each sample, and recording, at every sampled point, the ratio of each model's predicted to the true (Bayes-optimal) probability of being class B. Unlike Firth's Jeffreys-prior penalty, which depends on the design matrix, both weakly informative priors are fixed in advance; the Cauchy's heavy tails let strongly informative data override the prior, while the $t_7$ shrinks large coefficients more aggressively. @fig-one-dataset-predictions shows what a single replication looks like: the predicted-probability curve from each of the eight models, together with the true Bayes curve, fitted to one simulated dataset. @fig-calibration-ratios then shows the resulting distribution of $\log_{10}(\hat{p}/p_{\text{true}})$ for each method, restricted to points sampled from class A; a value of 0 indicates perfect calibration at that point, positive values indicate the model overestimated the true probability, and negative values indicate underestimation. We restrict to class-A points because $p_{\text{true}}$ is bounded away from $1$ there: class A sits 6 SDs from class B, so $p_{\text{true}}$ only approaches $1$ for a class-A point that is itself several SDs from its own mean, which essentially never happens. Class-B points, by contrast, almost always have $p_{\text{true}} \approx 1$, where $\log p$ is insensitive to the model's actual log-odds and the ratio is uninformative regardless of how wrong the model is. Nothing is lost by dropping class-B points: the whole setup — both Gaussians and all eight fitting procedures — is symmetric under swapping the class labels and reflecting $x$ about the midpoint, so class-A and class-B behavior are mirror images in distribution. Because the two class means are 6 SDs apart, the two classes end up linearly separable in $x$ (some threshold perfectly splits class A from class B) in the large majority of replications; in that regime, weakly-regularized models can drive predicted probabilities toward 0/1, showing up here as strongly negative log-ratios. -->
+
+We now investigate whether this dissimilarity persists in repeated simulations. We evaluate ratio of predicted probability to true probability (on log scale) for 30 replications for each data point in class A. The results are shown in @fig-calibration-ratios. All variants of logistic regression show consistent overconfidence in their predictions, most with more than five (!) orders of magnitude. The only exceptions are data dependent L1 regression (mean = 1.5) and regression using weakly informative Cauchy prior (mean = 4.3). We refer to this suprising strong overconfidence as *multiplicative miscalibration*. The adjective multiplicative refers to the fact that absolute difference in two probabilities is minuscule, it is the *ratio of probabilities* that is consistenly very large.
+
 ```{r}
 #| label: fig-calibration-ratios
 #| echo: false
@@ -456,8 +466,9 @@ for (m in model_order) {
   ymax <- max(h$density) * 1.15
 
   hist(log_ratio, breaks = h$breaks, freq = FALSE, col = "grey85", border = "white",
-       xlab = "log10(predicted prob / true prob)", ylim = c(0, ymax),
-       main = unname(model_labels[m]))
+       xlab = "log10(predicted prob / true prob)", ylab = "Density", ylim = c(0, ymax),
+       main = unname(model_labels[m]), yaxt = "n")
+  axis(2, labels = FALSE)
   abline(v = 0, col = "red", lwd = 2, lty = 2)
 
   ## Small downward arrow at the mean, roughly mid-height, labeled above it.
@@ -466,11 +477,19 @@ for (m in model_order) {
   y_bot <- ymax * 0.45
   arrows(x0 = m_val, y0 = y_top, x1 = m_val, y1 = y_bot,
          col = "blue", lwd = 2, length = 0.08)
-  text(m_val, y_top, sprintf("mean=%.1f", m_val), col = "blue", pos = 3, cex = 1.1)
+  text(m_val, y_top, sprintf("mean=%.1f", m_val), col = "blue", pos = 3, cex = 1.4)
 }
 ```
 
 # Applications
+
+Let us discuss two applications where the phenomenon of multiplicative miscalibration could be of importance. 
+
+The first is out of distribution detection using neural networks. This is a problem when a neural network should detect that its input is something it has never seen before. For instance, an automated driving system should detect that something is ahead on the road that it is unable to correctly classify, because it has not seen such object in a training set. A very simple method is
+to threshold the predicted probability--so-called maximum softmax probability method. Studies has shown that this simple method performs very well in practice [@hendrycks2016baseline, @yang2022openood]. If however, a model provided incorrect predictions by several orders of magnitude, the car would require corrective action (stopping or remote assistance) too frequently. 
+
+
+
 
 ## Multi-class classification via pairwise coupling
 
