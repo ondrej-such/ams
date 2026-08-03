@@ -284,7 +284,7 @@ add_bayes_boundary <- function() {
 }
 
 ## ---- 8. Visualize -----------------------------------------------------------
-dir <- path.expand("~/ams")
+dir <- path.expand(".")
 class_cols <- c("#e41a1c", "#4daf4a", "#377eb8")   # red, green, blue
 
 ## 8a. RGB probability blend: class1=red, class2=green, class3=blue
@@ -296,7 +296,7 @@ rgb_arr[, , 1] <- t(Rm)[ny:1, ]
 rgb_arr[, , 2] <- t(Gm)[ny:1, ]
 rgb_arr[, , 3] <- t(Bm)[ny:1, ]
 rgb_raster <- as.raster(rgb_arr)
-
+print(file.path(dir, "three_class_firth_coupling_rgb.png"))
 png(file.path(dir, "three_class_firth_coupling_rgb.png"),
     width = 7, height = 6, units = "in", res = 150)
 par(mar = c(4, 4, 3, 1))
@@ -311,6 +311,7 @@ invisible(dev.off())
 cat("Wrote", file.path(dir, "three_class_firth_coupling_rgb.png"), "\n")
 
 ## 8b. Hard (argmax) decision regions
+print(file.path(dir, "three_class_firth_coupling_argmax.png"))
 png(file.path(dir, "three_class_firth_coupling_argmax.png"),
     width = 7, height = 6, units = "in", res = 150)
 par(mar = c(4, 4, 3, 1))

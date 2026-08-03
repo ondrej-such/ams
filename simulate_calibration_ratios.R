@@ -162,7 +162,7 @@ fit_one_rep <- function(rep_id) {
 
 results <- do.call(rbind, lapply(seq_len(n_reps), fit_one_rep))
 
-out_file <- path.expand("~/ams/calibration_ratios.csv")
+out_file <- path.expand("calibration_ratios.csv")
 write.csv(results, out_file, row.names = FALSE)
 cat(sprintf("Wrote %s with %d rows (%d reps x %d points x %d models)\n",
             out_file, nrow(results), n_reps, 2 * n, length(unique(results$model))))

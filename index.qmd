@@ -1,8 +1,21 @@
 ---
 title: Multiplicative miscalibration of logistic models
-authors:
-  - name: Ondrej Šuch, Peter Novotný
-    affiliation: The University
+
+author:
+  - name: Ondrej Šuch
+    affiliations:
+      - name: Matematický ústav SAV
+        city: Banská Bystrica
+  - name: Muhammad Azeem
+    affiliations:
+      - name: Matematický ústav SAV
+        city: Banská Bystrica
+      - name: Univerzita Komenského v Bratislave
+        city: Bratislava
+  - name: Peter Novotný
+    affiliations:
+      - name: Žilinská Univerzita v Žiline
+        city: Žilina
     roles: writing
     corresponding: true
 notebook-links: false
@@ -13,38 +26,79 @@ bibliography: references.bib
 
 Probabilistic modelling provides answer to the quintessential question of probability theory: "What is the probability of an event". In classroom setting, the answer is typically a single number which is deduced from modelling assumptions. 
 For instance, we may assume that we roll a perfectly symmetrical dice or, that subsequent throws are independent. 
-In practical applications, however, the question to quantify probability is often asked \emph{repeatedly} with varying context. One naturally expects that the answer will vary depending on the context. For instance, a bank may wonder what is the probability that the borrower will repay a loan. The context could be provided by the current financial disclosure of the borrower's assets. To answer the question it is customary to build a mathematical model.
+In practical applications, however, the question to quantify probability is often asked *repeatedly* with varying context. One naturally expects that the answer will vary depending on the context. For instance, a bank may wonder what is the probability that the borrower will repay a loan. The context could be provided by the current financial disclosure of the applicant. To answer the question it is customary to build a *probabilistic model*.
+<!-- which is really an algorithm taking input (the context) and producing the desired probability as its output. -->
 
-There is a multitude of ways to build different models, and thus one may wonder which models are good, or perhaps even which one in a set of models is the best. Historically, the question gained attention in the context of weather forecasting. Since early 20th century weather forecasts are typically are probabilistic. An easy way to check how good a weather forecasters (or more precisely their models) are, is to compare them with climate observations. Climate is computed by taking the expected frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be pretty close.
+There is a multitude of ways to build different models, and thus one may ask how to compare their quality. Non-probabilistic ways of comparison use the $2\times 2$ contingency matrix with rows and columns corresponding to predictions (probability > 0.5) and observed outcomes. One can use any number of metrics for comparison starting from accuracy (ratio of the sum diagonal entries to that of the whole matrix), through precision and recall to Matthews correlation coefficient [@yule1912methods; @chicco2021matthews]. However, this approach disregards much of the probabilistic information.
 
-There is an even finer method to compare forecast's fidelity. We can subdivide the probability interval $[0,1]$ into (nonintersecting) subintervals. For each subinterval, we compare the observed frequency of rain on days when the forecast fell into it. Suppose for instance that one the subintervals was $I = [0.45, 0.55]$. We would expect that the probability $p$ of rain on days when forecast fell into $I$ would be around 0.5 A model that matches this expectation reasonably well is said to be *well-calibrated*. An example of real-world diagram that checks for calibration is in
+Historically, the question of measuring quality of probabilistic predictions arose in the context of weather forecasting. Since early 20th century weather forecasts are typically  probabilistic. A simple check of how good a weather forecasters (or more precisely their models) are, is to compare their predictions with climate observations. *Climate* is obtained by computing the expected event frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be close.
 
-![Example of weather calibration](BrierExample.png)
+There is an even finer method to compare forecast's fidelity. We can subdivide the probability interval $[0,1]$ into (nonintersecting) subintervals. For each subinterval, we compare the observed frequency of rain on days when the forecast fell into it [@zadrozny2001obtaining]. Suppose for instance that one of the subintervals was $I_m = [0.45, 0.55]$. We would expect that the probability $p$ of rain on days when forecast fell into $I_m$ would be around 0.5 A model that matches this expectation reasonably well is said to be *well-calibrated*. Calibration is typically judged visually by preparing a reliability diagram. or by computing a score such as expected calibration error.
 
-Good calibration of a probabilistic model is a very desirable property.
+In our paper we will discuss *multiplicative miscalibration* in the context of logistic models. This phenomenon
+is not detected by currently used techniques, yet may have significant repercussions in applications.
+
+
+
+<!-- An example of real-world diagram that checks for calibration is in -->
+
+<!-- ![Example of weather calibration](BrierExample.png) -->
+
+<!-- Good calibration of a probabilistic model is a very desirable property. -->
 
 # Logistic models
 
-A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. Mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a logistic model we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability $$
+A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. The ususal mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a *logistic model* we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability of a context-dependent event by the following formula
+$$
 p(\mathbf{x}) = \sigma(\mathbf{w} \cdot \mathbf{x}),\quad\textrm{where } \sigma(x) = \frac{\exp x}{1 + \exp{x}}.
-$$ {#eq-logistic} Note that we have $$
+$$ {#eq-logistic} 
+Note that  the model allows predicting probabilities in the whole range $(0,1)$ since $$
 \begin{aligned}
 \lim_{x\rightarrow-\infty} \sigma(x) = 0, \quad \textrm{and}\quad
-\lim_{x\rightarrow\infty} \sigma(x) = 1
-\end{aligned},
-$$ {#eq-logistic2} and thus this model allows predicting probabilities in the whole range $(0,1)$.
+\lim_{x\rightarrow\infty} \sigma(x) = 1.
+\end{aligned}
+$$ {#eq-logistic2}
 
-The two principal examples of logistic models are linear discriminant analysis and logistic regression. They both have form @eq-logistic, but they differ in the method they use to estimate the weight vector $\mathbf{w}$. Logistic regression is more commonly used, but they are considered to give approximately the same results. We can illustrate it on the famous iris dataset. The iris dataset was created in 1930's by Edgar Anderson, an American botanist. It contains four measurements (features) of three iris species
+The two principal examples of logistic models are linear discriminant analysis (LDA) and logistic regression [@james2021introduction]. They both yield prediction in the form @eq-logistic, but they differ in their parameters, as well as in the methods to estimate them. Although logistic regression is more commonly used,  they are considered to give approximately the same results. We can illustrate it on the famous iris dataset. The iris dataset was created in 1930's by Edgar Anderson, an American botanist. It contains four measurements (features) of three iris species
 
--   iris versicolor L.,
+-   iris versicolor L. (L. indicates it was named by famous Swedish biologist Carl Linnaeus),
 -   iris virginica L.,
 -   iris setosa.
 
-From statistical point of view the important property of the dataset is that the features are approximately normally distributed. Let us illustrate this by comparing the distributions of one the measurements (the width of petal) as shown in @fig-density.
+From statistical point of view the important property of the dataset is that the features are approximately normally distributed. We can check this for one of the measurements (the width of petal) with normal quantile-quantile plots, shown in @fig-qq: for both versicolor and virginica the points fall close to the reference line, indicating approximate normality. 
+
+<!-- Having established this, we compare the class-conditional distributions of the same measurement in @fig-density. -->
+
+```{r}
+#| label: fig-qq
+#| echo: false
+#| fig-cap: Normal Q-Q plots of Petal.Width for versicolor and virginica. Points close to the reference line indicate that the class-conditional distribution is approximately normal.
+#| fig-width: 8
+#| fig-height: 4
+d_qq <- droplevels(subset(iris, Species %in% c("versicolor", "virginica")))
+
+col_versicolor <- "#1b9e77"
+col_virginica  <- "#d95f02"
+
+par(mfrow = c(1, 2), mar = c(4, 4.5, 3, 1))
+
+pw_versicolor <- d_qq$Petal.Width[d_qq$Species == "versicolor"]
+qqnorm(pw_versicolor, col = col_versicolor, pch = 19,
+       main = "versicolor", xlab = "Theoretical quantiles",
+       ylab = "Petal.Width")
+qqline(pw_versicolor, col = col_versicolor, lwd = 2)
+
+pw_virginica <- d_qq$Petal.Width[d_qq$Species == "virginica"]
+qqnorm(pw_virginica, col = col_virginica, pch = 19,
+       main = "virginica", xlab = "Theoretical quantiles",
+       ylab = "Petal.Width")
+qqline(pw_virginica, col = col_virginica, lwd = 2)
+```
 
 ```{r}
 #| label: fig-density
 #| echo: false
+#| eval: false
 #| fig-cap: Class-conditional densities of Petal.Width for versicolor and virginica (kernel density estimate)
 #| dev: !expr if (knitr::is_latex_output()) "tikz" else "png"
 #| fig-ext: !expr if (knitr::is_latex_output()) "tex" else "png"
@@ -85,9 +139,11 @@ legend("topright", bty = "n", legend = legend_labels,
        col = c(col_versicolor, col_virginica), lwd = 2, lty = c(1, 2))
 ```
 
-The results are shown in @fig-chunk1. They include Bayes classifier $$
+LDA assumes normality, and thus we would expect LDA model to be a good match when modelling species prediction using the width of petals. Notably the assumption is not needed when applying logistic regression. As @fig-chunk1 shows, both models yield approximately equal predictions. Over the considered range, the biggest difference in predicted probabilities between the models in 0.14.
+
+<!-- They include Bayes classifier $$
 \hat p(virginica | x) = \frac{\hat p(x \mid virginica)P(virginica)}{\hat p(x \mid virginica)P(virginica)+ \hat p(x \mid versicolor)P(versicolor)}
-$$
+$$ -->
 
 ```{r }
 #| label: fig-chunk1
@@ -108,22 +164,22 @@ p_glm <- predict(glm_fit, newdata = data.frame(Petal.Width = xg), type = "respon
 
 ## Nonparametric ("plug-in") Bayes classifier: estimate each class-conditional
 ## density via KDE, then combine via Bayes' rule (equal priors, n = 50 each).
-dens_versicolor <- density(d$Petal.Width[d$Species == "versicolor"])
-dens_virginica  <- density(d$Petal.Width[d$Species == "virginica"])
-f_versicolor <- approxfun(dens_versicolor$x, dens_versicolor$y, rule = 2)
-f_virginica  <- approxfun(dens_virginica$x, dens_virginica$y, rule = 2)
-p_bayes <- f_virginica(xg) / (f_versicolor(xg) + f_virginica(xg))
+# dens_versicolor <- density(d$Petal.Width[d$Species == "versicolor"])
+# dens_virginica  <- density(d$Petal.Width[d$Species == "virginica"])
+# f_versicolor <- approxfun(dens_versicolor$x, dens_versicolor$y, rule = 2)
+# f_virginica  <- approxfun(dens_virginica$x, dens_virginica$y, rule = 2)
+# p_bayes <- f_virginica(xg) / (f_versicolor(xg) + f_virginica(xg))
 
 col_lda   <- "#1b9e77"
 col_glm   <- "#d95f02"
-col_bayes <- "#7570b3"
+# col_bayes <- "#7570b3"
 
 par(mar = c(4, 4.5, 3, 1))
 plot(xg, p_lda, type = "l", lwd = 2, col = col_lda, yaxt = "n",
      xlab = "Petal.Width", ylab = "P(virginica | Petal.Width)",
      main = "", ylim = c(0, 1))
 lines(xg, p_glm, lwd = 2, lty = 2, col = col_glm)
-lines(xg, p_bayes, lwd = 2, lty = 3, col = col_bayes)
+# lines(xg, p_bayes, lwd = 2, lty = 3, col = col_bayes)
 
 ## y-axis on [0,1], tick labels to 1 decimal place
 y_ticks <- seq(0, 1, by = 0.2)
@@ -141,13 +197,15 @@ arrows(x0 = x_max, y0 = y_lo, x1 = x_max, y1 = y_hi,
        code = 3, angle = 90, length = 0.05, lwd = 1.5, col = "black")
 text(x_max, (y_lo + y_hi) / 2, sprintf("max gap = %.2f", gap[i_max]), pos = 2, cex = 0.85)
 
-legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression", "Bayes (KDE plug-in)"),
-       col = c(col_lda, col_glm, col_bayes), lwd = 2, lty = c(1, 2, 3))
+legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression"),
+       col = c(col_lda, col_glm), lwd = 2, lty = c(1, 2))
+# legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression", "Bayes (KDE plug-in)"),
+#        col = c(col_lda, col_glm, col_bayes), lwd = 2, lty = c(1, 2, 3))
 ```
 
-Interestingly, we couldn't carry out the comparison for virginica and setosa samples because the fitting procedure for logistic regression will not converge. Let us examine the reason. Logistic regression model is fitted by maximizing the likelihood on the dataset with features $\mathbf{x_i}$ and provided labels $y_i$. In our case $$
+Interestingly, we cannot carry out the comparison for virginica and setosa samples because the fitting procedure for logistic regression will not converge. Let us explain the reason. Logistic regression model is fitted by maximizing the likelihood on the dataset with features $\mathbf{x_i}$ and provided labels $y_i$. In our case $$
 \overbrace{L(w, b)}^{\textrm{likelihood function}} = \prod_i \left\{ \sigma(wx_i + b)\ \ \ \ \mathrm{ when  }\ y_i = virginica \atop 1 - \sigma(wx_i + b)\ \mathrm{ when  }\ y_i = versicolor \right\}.
-$$ The key fact that the ranges of petal width do not intersect (the data is linearly separable), as seen from summary statistics for each species shown in @tbl-petalwidth. For any $\lambda$ we have $$
+$$ The key fact that the ranges of petal width do not intersect (the data is linearly separable), as seen from summary statistics for each species shown in @tbl-petalwidth. For any $\lambda > 0$ we have $$
 \begin{aligned}
 \lambda (x_i - 1) > 0 \quad y_i = virginica\\
 \lambda (x_i - 1) < 0 \quad y_i = setosa
@@ -159,7 +217,7 @@ $$ {#eq-logistic3} Thus if we choose $w = \lambda$ and $b = -\lambda$ and let $\
 ```{r}
 #| label: tbl-petalwidth
 #| echo: false
-#| tbl-cap: Summary statistics of Petal.Width (cm) by species (sample count, minimum, maximum, mean, and standard deviation)
+#| tbl-cap: Summary statistics of Petal.Width (cm) by species
 species_levels <- levels(iris$Species)
 petal_width_tab <- data.frame(
   Species = species_levels,
@@ -179,39 +237,73 @@ knitr::kable(petal_width_tab, digits = 2, row.names = FALSE, escape = FALSE,
 
 <!-- Since the ranges do not intersect, it is possible to fit model so that probabilities at dataset points are arbitrarily close to the true values zero and one. -->
 
-This problem does not occur with LDA. Fitting LDA can be done in either of two ways
 
--   by maximizing Fisher discriminant ratio for vector $\mathbf{w}$, or
--   by maximum likelihood method where the parameters are the means $\mu_1, \mu_2$ and joint covariance matrix $\Sigma$ which form a generative model of data points $(\mathbf{x}_i, y_i)$.
+<!-- This problem does not occur with LDA. Let us recall that LDA model can be introduced one of two equivalent ways -->
 
-When using the first approach, the existence of the optimal $\mathbf{w}$ is assured by the fact that Fisher discriminant ratio is the same for collinear vectors, and thus follows from the fact that a continuous function always attains a maximum on a sphere, a compact set.
+<!-- -   by maximizing Fisher discriminant ratio for vector $\mathbf{w}$ as introduced, or -->
+<!-- -   by maximum likelihood method where the parameters are the group means $\mu_1, \mu_2$ and joint covariance matrix $\Sigma$ which form a generative model of data points $(\mathbf{x}_i, y_i)$. -->
 
-This argument will not work for logistic regression, since the objective, the expected likelihood $L(\mathbf{w}, b)$ is *not* invariant to rescaling the model's coefficients.
+<!-- The first approach is considerably simpler. It is worth point out that although Fisher was a big proponent of maximum likelihood method, he eschewed maximum likelihood estimation and instead used the first approach when he introduced LDA [@fisher1936use]. The drawback of the first approach is that it does not directly yield $(\mathbf{w},b)$ in @eq-logistic. Instead it determines $\mathbf{w}$ up to a scalar multiple, since Fisher discriminant ratio is invariant to scaling of $\mathbf{w}$. -->
 
-An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on the distribution of the variate for both classes if we take enough samples, the ranges will intersect. The probability of the intersection can be computed exactly using order statistics. Suppose we draw $n$ samples per class, and let $F_s$, and $F_v$, $f_v$ denote the distribution functions of the two classes and the density of the second class. The setosa range $[\min_i X_i, \max_i X_i]$ fails to intersect the virginica range precisely when $\max_i X_i < \min_j Y_j$ (the reverse ordering has negligible probability, as setosa's mean lies far below virginica's). Conditioning on the position of the minimum $\min_j Y_j$, whose density is $n\,(1-F_v(t))^{n-1} f_v(t)$, and using independence of the two samples, $$
+<!-- When using the first approach, the existence of the optimal $\mathbf{w}$ is assured by the fact that Fisher discriminant ratio is continuous in parameter $\mathbf{w}$ and is the same for any pair of collinear vectors. This allows to reduce the question to maximize the ratio on a sphere, which is a compact set, and thus a continuous function always attains maximum. -->
+
+<!-- This argument would not work for logistic regression, since the objective, the expected likelihood $L(\mathbf{w}, b)$ is *not* invariant to rescaling the model's coefficients. -->
+
+An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on class conditional densities,  if we take enough samples, the ranges *will* intersect. The probability of the intersection can be computed exactly using order statistics. Suppose we draw $n$ samples per class, and let $F_s$, and $F_v$, $f_v$ denote the distribution functions of the two classes and the density of the second class. The setosa range $[\min_i X_i, \max_i X_i]$ fails to intersect the virginica range precisely when $\max_i X_i < \min_j Y_j$ (the reverse ordering has negligible probability, as setosa's mean lies far below virginica's). Conditioning on the position of the minimum $\min_j Y_j$, whose density is $n\,(1-F_v(t))^{n-1} f_v(t)$, and using independence of the two samples, $$
 P\left(\max_i X_i < \min_j Y_j\right) = \int_{-\infty}^{\infty} F_s(t)^n \; n\,\bigl(1-F_v(t)\bigr)^{n-1} f_v(t)\, dt.
-$$ Evaluating this integral numerically with the plug-in parameters from @tbl-petalwidth (setosa: $\mu = 0.25$, $\sigma = 0.11$; virginica: $\mu = 2.03$, $\sigma = 0.27$) and solving for the sample size at which it drops to $1/2$ shows that one would need $n \approx 464\,000$ samples *per class* before the ranges have at least a 50% chance to intersect. The intuition for this enormous number is that the two means are more than six pooled standard deviations apart, so an intersection requires a joint extreme-tail event. Another way is needed. We will provide several alternatives in the next section.
+$$ Evaluating this integral numerically with the plug-in parameters from @tbl-petalwidth (setosa: $\mu = 0.25$, $\sigma = 0.11$; virginica: $\mu = 2.03$, $\sigma = 0.27$) and solving for the sample size at which it drops to $1/2$ shows that one would need $n \approx 464\,000$ samples *per class* before the ranges have at least a 50% chance to intersect. The intuition for this enormous number is that the two means are more than six pooled standard deviations apart, so an intersection requires a joint extreme-tail event. Another modelling method is needed. We will introduce several alternatives in the next section.
 
 # Regularization of logistic regression
 
-T
+There are two principal paradigms to fit a logistic regression in the case of linear separation
+
+- applying prior on coefficients as typical in Bayesian statistics, or
+- extending Bernoulli model used in logistic regression to what we could call a *fractional Bernoulli model*.
+
+In the first paradigm one uses the Bayes formula 
+$$\textrm{posterior} \propto \textrm{likelihood}\times \textrm{prior}
+$$
+to replace maximization of log likelihood with
+$$
+\max_{\mathbf{w}, b}  \log L(\mathbf{w},b)  + \log (\textrm{prior}(\mathbf{w})).
+$$
+There are several commonly used priors 
+
+- L2 data dependent regularization, where the prior is the multivariate normal distribution; this method mirrors the classical Tikhonov's regularization [@tikhonov1963solution],
+- L1 data dependent regularization, where the prior is the multivariate Cauchy distribution [@friedman2010regularization]; this method encourages model's sparsity,
+- Firth logistic regression, where one uses Jeffrey's prior [@firth1993bias],
+- weakly informative Cauchy distribution proposed in [@gelman2008weakly],
+- multidimensional Student's $t$-distribution [@ghosh2018use].
+
+The first two methods use crossvalidation to select the scale of the prior. The last two methods do not take the data into account, they only require that they are suitably transformed.
+
+The second paradigm has been used in machine learning under names like Platt's scaling [@platt1999probabilistic] or label smoothing [@muller2019does]. In essence it enlarges the training dataset by replacing each sample in a group with label $y$ with $R$ samples with label $y$ and additional one sample with opposite label. This simple trick transforms a dataset with separable groups into a dataset where the two groups are inseparable. The way to choose $R$ is inspired by Laplace's (often ridiculed) work on calculating probability that the sun will rise tomorrow [@laplace1814essai]. It starts with a prior on probability and uses Bayes theorem to derive the posterior after a sequence of observed outcomes. Platt in his paper on  probabilistic modelling for support vector machines used Laplace prior---the uniform prior on interval $[0,1]$. Somewhat overlooked was that Jeffrey's prior is a natural alternative. @tbl-prior-r summarizes the two choices, the value of $R$ each implies, and the name we use for the resulting method throughout the rest of the paper.
 
 ```{r}
-#| label: load-calibration-ratios
+#| label: tbl-prior-r
 #| echo: false
-#| include: false
-ratios_df <- read.csv(path.expand("~/ams/calibration_ratios.csv"))
-M_reps <- length(unique(ratios_df$rep))
+#| tbl-cap: Two scaling (label smoothing) methods for logistic regression
+prior_tab <- data.frame(
+  Prior      = c("Laplace (uniform)", "Jeffreys"),
+  Beta_prior = c("Beta(1, 1)", "Beta(1/2, 1/2)"),
+  R          = c("$N + 1$", "$2N+1$"),
+  Method     = c("Platt scaling", "SAH scaling [@such2025canonical]")
+)
+knitr::kable(prior_tab, row.names = FALSE,
+             col.names = c("Prior", "Prior", "$R$", "Method name"))
 ```
 
-To compare how well each regularized model recovers the true class probability, we ran a Monte Carlo simulation with $M=`r M_reps`$ replications: repeatedly sampling $N=50$ points per class from two unit-variance Normal distributions with means 6 apart, fitting L1-penalized logistic regression, L2-penalized logistic regression, Firth logistic regression, Platt scaling, Platt scaling with halved pseudocounts ("2N" targets), LDA, and Bayesian logistic regression (posterior mode) under two data-independent weakly informative priors — the Cauchy(0, 2.5) default of Gelman et al. (2008) and a lighter-tailed Student-$t_7$(0, 2.5) variant — to each sample, and recording, at every sampled point, the ratio of each model's predicted to the true (Bayes-optimal) probability of being class B. Unlike Firth's Jeffreys-prior penalty, which depends on the design matrix, both weakly informative priors are fixed in advance; the Cauchy's heavy tails let strongly informative data override the prior, while the $t_7$ shrinks large coefficients more aggressively. @fig-one-dataset-predictions shows what a single replication looks like: the predicted-probability curve from each of the eight models, together with the true Bayes curve, fitted to one simulated dataset. @fig-calibration-ratios then shows the resulting distribution of $\log_{10}(\hat{p}/p_{\text{true}})$ for each method, restricted to points sampled from class A; a value of 0 indicates perfect calibration at that point, positive values indicate the model overestimated the true probability, and negative values indicate underestimation. We restrict to class-A points because $p_{\text{true}}$ is bounded away from $1$ there: class A sits 6 SDs from class B, so $p_{\text{true}}$ only approaches $1$ for a class-A point that is itself several SDs from its own mean, which essentially never happens. Class-B points, by contrast, almost always have $p_{\text{true}} \approx 1$, where $\log p$ is insensitive to the model's actual log-odds and the ratio is uninformative regardless of how wrong the model is. Nothing is lost by dropping class-B points: the whole setup — both Gaussians and all eight fitting procedures — is symmetric under swapping the class labels and reflecting $x$ about the midpoint, so class-A and class-B behavior are mirror images in distribution. Because the two class means are 6 SDs apart, the two classes end up linearly separable in $x$ (some threshold perfectly splits class A from class B) in the large majority of replications; in that regime, weakly-regularized models can drive predicted probabilities toward 0/1, showing up here as strongly negative log-ratios.
+
+Let us compare the predictions of these models. We shall apply them to a simulated data sets where 
+we draw 50 samples from two normal distributions with unit variance and means at distance six. Since we generated the data, we can also include Bayes classifier. The results are shown in @fig-one-dataset-predictions. We can see that all models found the optimal separation point which lies midway between the means. However, they do differ significantly with LDA and data dependent L1 being closest to the Bayes classifier. The first is unsurprising, since our generative model matches exactly the assumption of LDA, but the latter is not expected.
 
 ```{r}
 #| label: fig-one-dataset-predictions
 #| echo: false
 #| fig-cap: Predicted P(class B | x) from each of the eight models, together with the true Bayes-optimal probability, for a single simulated dataset (the first of the M Monte Carlo replications used in @fig-calibration-ratios below). Tick marks along the bottom show the sampled class A (dark) and class B (light) points.
+#| fig-pos: 'H'
 #| fig-width: 7
-#| fig-height: 5
+#| fig-height: 3.8
 suppressPackageStartupMessages({
   library(glmnet)
   library(logistf)
@@ -286,24 +378,80 @@ curves <- list(L1 = p_l1, L2 = p_l2, Firth = p_firth,
 cols <- c(L1 = "#1b9e77", L2 = "#d95f02", Firth = "#7570b3",
           Platt = "#e7298a", Platt_2N = "#66a61e", LDA = "#e6ab02",
           Cauchy = "#a6761d", StudentT = "#666666")
-labs <- c(L1 = "L1 logistic", L2 = "L2 logistic", Firth = "Firth logistic",
-          Platt = "Platt scaling", Platt_2N = "Platt (2N targets)", LDA = "LDA",
+ltys <- c(L1 = 2, L2 = 3, Firth = 4,
+          Platt = 5, Platt_2N = 6, LDA = 2,
+          Cauchy = 3, StudentT = 4)
+labs <- c(L1 = "data dependent L1", L2 = "data dependent L2", Firth = "Firth logistic",
+          Platt = "Platt scaling", Platt_2N = "SAH scaling", LDA = "LDA",
           Cauchy = "Cauchy(0, 2.5) prior", StudentT = "Student-t(4) prior")
 
 par(mar = c(4, 4.5, 1, 1))
 plot(xg, p_true, type = "l", lwd = 3, col = "black",
      xlab = "x", ylab = "P(class B | x)", ylim = c(0, 1))
+abline(h = 0.5, col = "grey50", lwd = 1, lty = 2)
 for (mdl in names(curves)) {
-  lines(xg, curves[[mdl]], lwd = 2, col = cols[mdl])
+  lines(xg, curves[[mdl]], lwd = 2, col = cols[mdl], lty = ltys[mdl])
 }
 rug(x1, col = "grey30")
 rug(x2, col = "grey60")
 
-legend("bottomright", bty = "n", cex = 0.85,
+## Nudge the legend up by half a text line from its default "bottomright" spot.
+leg_probe <- legend("bottomright", bty = "n", cex = 0.85,
        legend = c("True (Bayes)", unname(labs[names(curves)])),
        col = c("black", unname(cols[names(curves)])),
-       lwd = c(3, rep(2, length(curves))))
+       lwd = c(3, rep(2, length(curves))),
+       lty = c(1, unname(ltys[names(curves)])),
+       plot = FALSE)
+line_h <- strheight("A", cex = 0.85)
+legend(x = leg_probe$rect$left, y = leg_probe$rect$top + 0.5 * line_h,
+       bty = "n", cex = 0.85,
+       legend = c("True (Bayes)", unname(labs[names(curves)])),
+       col = c("black", unname(cols[names(curves)])),
+       lwd = c(3, rep(2, length(curves))),
+       lty = c(1, unname(ltys[names(curves)])))
+
+## Inset: class-conditional normal densities, upper-left quadrant.
+col_A <- "grey30"
+col_B <- "grey60"
+
+d_true_A <- dnorm(xg, mu1, sdv)
+d_true_B <- dnorm(xg, mu2, sdv)
+
+peak_h <- max(d_true_A, d_true_B)
+
+ip <- par(fig = c(0.13, 0.52, 0.50, 0.95), new = TRUE,
+          mar = c(2.2, 2.5, 1, 0.5), cex = 0.7)
+## Opaque background for the whole inset panel (plot box + margins), so
+## whatever's behind it in the main plot (e.g. the P = 0.5 line) can't show
+## through the inset's axis-label area.
+plot.new()
+rect(0, 0, 1, 1, col = "white", border = NA, xpd = TRUE)
+par(new = TRUE)
+plot(xg, d_true_A, type = "l", lwd = 1.5, col = col_A,
+     xlab = "", ylab = "", ylim = c(0, peak_h * 1.3),
+     xaxt = "n", yaxt = "n")
+lines(xg, d_true_B, lwd = 1.5, col = col_B)
+axis(1, tck = -0.05, mgp = c(0, 0.3, 0))
+axis(2, tck = -0.05, mgp = c(0, 0.4, 0), las = 1)
+title(xlab = "x", ylab = "density", mgp = c(1.1, 0, 0))
+box()
+text(mu1, dnorm(mu1, mu1, sdv), "class A", col = col_A, cex = 0.75, pos = 3)
+text(mu2, dnorm(mu2, mu2, sdv), "class B", col = col_B, cex = 0.75, pos = 3)
+par(ip)
 ```
+
+
+```{r}
+#| label: load-calibration-ratios
+#| echo: false
+#| include: false
+ratios_df <- read.csv(path.expand("calibration_ratios.csv"))
+M_reps <- length(unique(ratios_df$rep))
+```
+
+<!-- To compare how well each regularized model recovers the true class probability, we ran a Monte Carlo simulation with $M=`r M_reps`$ replications: repeatedly sampling $N=50$ points per class from two unit-variance normal distributions with means 6 apart, fitting L1-penalized logistic regression, L2-penalized logistic regression, Firth logistic regression, Platt scaling, Platt scaling with halved pseudocounts ("2N" targets), LDA, and Bayesian logistic regression (posterior mode) under two data-independent weakly informative priors — the Cauchy(0, 2.5) default of Gelman et al. (2008) and a lighter-tailed Student-$t_7$(0, 2.5) variant — to each sample, and recording, at every sampled point, the ratio of each model's predicted to the true (Bayes-optimal) probability of being class B. Unlike Firth's Jeffreys-prior penalty, which depends on the design matrix, both weakly informative priors are fixed in advance; the Cauchy's heavy tails let strongly informative data override the prior, while the $t_7$ shrinks large coefficients more aggressively. @fig-one-dataset-predictions shows what a single replication looks like: the predicted-probability curve from each of the eight models, together with the true Bayes curve, fitted to one simulated dataset. @fig-calibration-ratios then shows the resulting distribution of $\log_{10}(\hat{p}/p_{\text{true}})$ for each method, restricted to points sampled from class A; a value of 0 indicates perfect calibration at that point, positive values indicate the model overestimated the true probability, and negative values indicate underestimation. We restrict to class-A points because $p_{\text{true}}$ is bounded away from $1$ there: class A sits 6 SDs from class B, so $p_{\text{true}}$ only approaches $1$ for a class-A point that is itself several SDs from its own mean, which essentially never happens. Class-B points, by contrast, almost always have $p_{\text{true}} \approx 1$, where $\log p$ is insensitive to the model's actual log-odds and the ratio is uninformative regardless of how wrong the model is. Nothing is lost by dropping class-B points: the whole setup — both Gaussians and all eight fitting procedures — is symmetric under swapping the class labels and reflecting $x$ about the midpoint, so class-A and class-B behavior are mirror images in distribution. Because the two class means are 6 SDs apart, the two classes end up linearly separable in $x$ (some threshold perfectly splits class A from class B) in the large majority of replications; in that regime, weakly-regularized models can drive predicted probabilities toward 0/1, showing up here as strongly negative log-ratios. -->
+
+We now investigate whether this dissimilarity persists in repeated simulations. We evaluate ratio of predicted probability to true probability (on log scale) for 30 replications for each data point in class A. The results are shown in @fig-calibration-ratios. All variants of logistic regression show consistent overconfidence in their predictions, most with more than five (!) orders of magnitude. The only exceptions are data dependent L1 regression (mean = 1.5) and regression using weakly informative Cauchy prior (mean = 4.3). We refer to this suprising strong overconfidence as *multiplicative miscalibration*. The adjective multiplicative refers to the fact that absolute difference in two probabilities is minuscule, it is the *ratio of probabilities* that is consistenly very large.
 
 ```{r}
 #| label: fig-calibration-ratios
@@ -313,19 +461,21 @@ legend("bottomright", bty = "n", cex = 0.85,
 #| fig-height: 6
 model_order  <- c("L1", "L2", "Firth", "Platt", "Platt_2N", "LDA",
                   "Cauchy", "StudentT")
-model_labels <- c(L1 = "L1 logistic", L2 = "L2 logistic", Firth = "Firth logistic",
-                  Platt = "Platt scaling", Platt_2N = "Platt (2N targets)", LDA = "LDA",
+model_labels <- c(L1 = "data dependent L1", L2 = "data dependent L2", Firth = "Firth logistic",
+                  Platt = "Platt scaling", Platt_2N = "SAH scaling", LDA = "LDA",
                   Cauchy = "Cauchy(0, 2.5) prior", StudentT = "Student-t(4) prior")
 
-par(mfrow = c(2, 4), mar = c(4, 4, 3, 1))
+par(mfrow = c(2, 4), mar = c(4.5, 4.5, 3, 1),
+    cex.axis = 1.2, cex.lab = 1.25, cex.main = 1.3)
 for (m in model_order) {
   log_ratio <- ratios_df$log10_ratio[ratios_df$model == m & ratios_df$class == "A"]
   h <- hist(log_ratio, breaks = 40, plot = FALSE)
   ymax <- max(h$density) * 1.15
 
   hist(log_ratio, breaks = h$breaks, freq = FALSE, col = "grey85", border = "white",
-       xlab = "log10(predicted prob / true prob)", ylim = c(0, ymax),
-       main = unname(model_labels[m]))
+       xlab = "log10(predicted prob / true prob)", ylab = "Density", ylim = c(0, ymax),
+       main = unname(model_labels[m]), yaxt = "n")
+  axis(2, labels = FALSE)
   abline(v = 0, col = "red", lwd = 2, lty = 2)
 
   ## Small downward arrow at the mean, roughly mid-height, labeled above it.
@@ -334,52 +484,198 @@ for (m in model_order) {
   y_bot <- ymax * 0.45
   arrows(x0 = m_val, y0 = y_top, x1 = m_val, y1 = y_bot,
          col = "blue", lwd = 2, length = 0.08)
-  text(m_val, y_top, sprintf("mean=%.1f", m_val), col = "blue", pos = 3, cex = 0.85)
+  text(m_val, y_top, sprintf("mean=%.1f", m_val), col = "blue", pos = 3, cex = 1.4)
 }
 ```
 
 # Applications
 
-## Multi-class classification via pairwise coupling
+Let us describe two applications which could by affected by the phenomenon of multiplicative miscalibration. 
 
-The models discussed so far are inherently binary. A standard way to extend a binary classifier to $K > 2$ classes is to fit a model on every pair of classes and then *couple* the $\binom{K}{2}$ pairwise probability estimates into a single probability vector over all $K$ classes. We illustrate this with a three-class problem: three bivariate Normal populations with identity covariance ($\mathrm{sd}=1$ in each coordinate) and means forming a right triangle with sides $9$, $12$, $15$ (the $3$-$4$-$5$ triple scaled by $3$), with the right angle at class 1's mean and $150$ points sampled per class. Because the classes have equal priors and identity covariance, the exact Bayes-optimal rule is the nearest-mean classifier, giving us a ground truth to compare against.
+The first is out of distribution detection using neural networks. This is a problem when a neural network should detect that its input is something it has never seen before. For instance, an automated driving system should be able detect that something is ahead on the road that it is unable to correctly classify, because it has not seen such object in a training set. A very simple method is
+to threshold the predicted probability--so-called maximum softmax probability method. Studies has shown that this simple method performs very well in practice [@hendrycks2016baseline, @yang2022openood]. If however, a model provided incorrect predictions by several orders of magnitude, the car would require corrective action (stopping or remote assistance) too frequently. 
 
-For every one of the three class pairs we fit a Firth (bias-reduced) logistic regression, generalizing the one-dimensional Firth fit used earlier in this paper to a two-dimensional design matrix via the same modified-score IRLS iteration. The three pairwise fits are then combined into one three-class probability vector two different ways: the fixed-point iteration of Wu, Lin and Weng (2004) — the same algorithm libsvm uses to turn one-vs-one SVM outputs into multi-class probabilities — and the earlier pairwise-coupling algorithm of Hastie and Tibshirani (1998) that WLW's method was designed to improve on. We also compute the exact Bayes-optimal classifier from the true generating means for comparison.
+The second is one-vs-one classification. The models discussed so far are inherently binary. A standard way to extend a binary classifier to $K > 2$ classes is to fit a model on every pair of classes and then *couple* the $\binom{K}{2}$ pairwise probability estimates into a single probability vector over all $K$ classes. We illustrate this with a three-class problem: three bivariate Normal populations with identity covariance ($\mathrm{sd}=1$ in each coordinate) and means forming a right triangle with sides $9$, $12$, $15$ (the $3$-$4$-$5$ triple scaled by $3$), with the right angle at class 1's mean and $150$ points sampled per class. Because the classes have equal priors and identity covariance, the exact Bayes-optimal rule is the nearest-mean classifier, giving us a ground truth to compare against.
 
-Both coupling algorithms recover the Bayes decision boundaries closely near the training data, with only small, expected deviations far from all three means, where the pairwise Firth fits are extrapolating. @fig-ht-argmax shows the argmax decision regions under Hastie-Tibshirani coupling, representative of both methods, with the true Bayes boundary overlaid (dashed).
+For every one of the three class pairs we fit two different one-vs-one base classifiers: LDA (closed-form pooled-covariance discriminant) and a Firth (bias-reduced) logistic regression, the latter generalizing the one-dimensional Firth fit used earlier in this paper 
+<!--to a two-dimensional design matrix via the same modified-score IRLS iteration.--> For each base classifier, the three pairwise fits are combined into one three-class probability vector via the fixed-point iteration of Wu, Lin and Weng (2004) — the same algorithm LIBSVM uses to turn one-vs-one SVM outputs into multi-class probabilities [@chang2011libsvm]. We also compute the exact Bayes-optimal classifier from the true generating means for comparison. Full (3-term) WLW coupling recovers the Bayes decision boundaries closely near the training data for both base classifiers, with only small, expected deviations far from all three means, where the pairwise fits are extrapolating.
 
-![Firth logistic regression + Hastie-Tibshirani coupling: argmax decision regions, with the true Bayes boundary overlaid (dashed).](three_class_ht_coupling_argmax.png){#fig-ht-argmax}
 
-## Partial pairwise coupling
+Wu-Lin-Weng coupling finds the probability vector $p$ minimizing $L(p) = \sum_{i<j}(r_{ji}\,p_i - r_{ij}\,p_j)^2$, a sum over all $\binom{3}{2}=3$ pairwise terms. 
 
-Wu-Lin-Weng coupling finds the probability vector $p$ minimizing $L(p) = \sum_{i<j}(r_{ji}\,p_i - r_{ij}\,p_j)^2$, a sum over all $\binom{3}{2}=3$ pairwise terms. To see how much any single pairwise comparison actually contributes to the final decision regions, we drop one term entirely from the objective — the corresponding pairwise Firth fit is still computed but never enters the coupling step — giving three "partial coupling" variants, one for each pair that can be dropped.
+<!--To see how much any single pairwise comparison actually contributes to the final decision regions, we drop one term entirely from the objective — the corresponding pairwise fit is still computed but never enters the coupling step — giving three "partial coupling" variants, one for each pair that can be dropped.
+-->
 
 With only three classes, dropping pair $(i,j)$ leaves exactly two terms in the objective, for pairs $(i,k)$ and $(j,k)$ with $k$ the remaining class. These two terms are independent of each other (neither involves both $p_i$ and $p_j$), so both can be driven to exactly zero at once: $r_{ki}\,p_i = r_{ik}\,p_k$ and $r_{kj}\,p_j = r_{jk}\,p_k$. This pins down the class ratios directly from the two kept pairwise odds, $p_i:p_j:p_k = \frac{r_{ik}}{r_{ki}} : \frac{r_{jk}}{r_{kj}} : 1$, with no optimization needed at all — unlike the full three-term objective, which generally has no exact solution and does need the fixed-point iteration. We evaluate this ratio from each pairwise classifier's raw log-odds rather than from its probability output: with class means 9–15 units apart, a pairwise probability routinely saturates to exactly $0$ or $1$ in floating point (any log-odds beyond about $37$ rounds a double-precision probability to $1.0$ exactly), which would silently discard precisely the information needed to tell $i$ and $j$ apart far from class $k$ — namely, the *difference* between two individually-huge log-odds, which stays well-behaved even once each one on its own has long since saturated a probability.
 
-@fig-partial-coupling shows the argmax regions for all three partial-coupling variants alongside the full three-term coupling as a reference. Dropping the pair $(i,j)$ predictably degrades the boundary specifically between classes $i$ and $j$ (since the coupling step no longer sees that pairwise comparison directly, only indirectly through their shared comparisons with class $k$), while leaving the region boundaries involving the third class comparatively unaffected.
+@fig-partial-coupling shows the argmax regions for all three partial-coupling variants (rows) using LDA (left column) and Firth logistic regression (right column) as the one-vs-one base classifier. Dropping the pair $(i,j)$ predictably degrades the boundary specifically between classes $i$ and $j$ (since the coupling step no longer sees that pairwise comparison directly, only indirectly through their shared comparisons with class $k$), while leaving the region boundaries involving the third class comparatively unaffected. The same qualitative pattern holds for both base classifiers, confirming this is a property of which pairwise comparisons feed the coupling objective, independent of the particular one-vs-one classifier used to produce them.
 
-::: {#fig-partial-coupling layout-ncol=2}
-![Full coupling (reference)](three_class_firth_full_wlw_argmax_reference.png){#fig-partial-full}
+```{r}
+#| label: fig-partial-coupling
+#| echo: false
+#| fig-cap: Argmax decision regions under partial (2-term) Wu-Lin-Weng coupling on the 9-12-15 three-class dataset, dropping one pairwise term at a time (rows), for LDA (left column) and Firth logistic regression (right column) as the one-vs-one base classifier. The true Bayes boundary is overlaid (dashed).
+#| fig-width: 7.5
+#| fig-height: 10.5
+set.seed(1)
 
-![Drop pair (1,2)](three_class_firth_partial_wlw_drop12_argmax.png){#fig-partial-drop12}
+## Class means: right triangle with sides 9, 12, 15 (right angle at class 1).
+mu1 <- c(0, 0); mu2 <- c(9, 0); mu3 <- c(0, 12)
+means3 <- rbind(mu1, mu2, mu3)
 
-![Drop pair (1,3)](three_class_firth_partial_wlw_drop13_argmax.png){#fig-partial-drop13}
+n3 <- 150
+sample_class3 <- function(mu, n) cbind(x = rnorm(n, mu[1], 1), y = rnorm(n, mu[2], 1))
+X1 <- sample_class3(mu1, n3); X2 <- sample_class3(mu2, n3); X3 <- sample_class3(mu3, n3)
+dat3 <- data.frame(x = c(X1[, 1], X2[, 1], X3[, 1]),
+                    y = c(X1[, 2], X2[, 2], X3[, 2]),
+                    class = factor(rep(1:3, each = n3)))
 
-![Drop pair (2,3)](three_class_firth_partial_wlw_drop23_argmax.png){#fig-partial-drop23}
+pairs3 <- combn(3, 2, simplify = FALSE)   # (1,2) (1,3) (2,3)
 
-Argmax decision regions under full (3-term) Wu-Lin-Weng coupling versus dropping one pairwise term from the coupling objective, with the true Bayes boundary overlaid (dashed).
-:::
+## LDA pairwise fits: closed-form pooled-covariance discriminant, evaluated
+## as a raw linear score (not via predict.lda) so it stays informative at
+## full precision far from the training data.
+lda_pair_coef <- list()
+for (pr in pairs3) {
+  lo <- pr[1]; hi <- pr[2]
+  Xlo <- as.matrix(dat3[dat3$class == lo, c("x", "y")])
+  Xhi <- as.matrix(dat3[dat3$class == hi, c("x", "y")])
+  n_lo <- nrow(Xlo); n_hi <- nrow(Xhi)
+  mlo <- colMeans(Xlo); mhi <- colMeans(Xhi)
+  Sigma <- ((n_lo - 1) * cov(Xlo) + (n_hi - 1) * cov(Xhi)) / (n_lo + n_hi - 2)
+  Sinv  <- solve(Sigma)
+  w <- as.numeric(Sinv %*% (mhi - mlo))
+  b <- -0.5 * as.numeric(mhi %*% Sinv %*% mhi - mlo %*% Sinv %*% mlo) + log(n_hi / n_lo)
+  lda_pair_coef[[paste0(lo, "_", hi)]] <- list(w = w, b = b)
+}
+lda_eta_pair_raw <- function(lo, hi, Xnew) {
+  cf <- lda_pair_coef[[paste0(lo, "_", hi)]]
+  as.numeric(Xnew %*% cf$w + cf$b)
+}
 
-To check whether this partial-coupling behavior is a quirk of Firth logistic regression or a property of the coupling step itself, we repeat the same experiment with LDA as the one-vs-one base classifier instead: one binary LDA fit per class pair, combined with the same full coupling and closed-form partial coupling. @fig-lda-partial-coupling shows the LDA analogue of @fig-partial-coupling. The same qualitative pattern holds — dropping pair $(i,j)$ degrades the boundary between classes $i$ and $j$ specifically — confirming this is a property of which pairwise comparisons feed the coupling objective, independent of the particular one-vs-one classifier used to produce them.
+## Firth pairwise fits (bias-reduced logistic regression via modified-score
+## IRLS), evaluated as a raw linear predictor for the same reason.
+firth_logistic3 <- function(X, y, tol = 1e-8, max_iter = 50) {
+  X <- cbind(Intercept = 1, X)
+  beta <- rep(0, ncol(X))
+  for (i in 1:max_iter) {
+    eta  <- as.vector(X %*% beta)
+    p_i  <- plogis(eta)
+    W    <- p_i * (1 - p_i)
+    XtWX <- t(X) %*% (X * W)
+    XtWX_inv <- solve(XtWX)
+    h <- W * rowSums((X %*% XtWX_inv) * X)
+    U_star <- t(X) %*% (y - p_i + h * (0.5 - p_i))
+    step <- as.vector(XtWX_inv %*% U_star)
+    beta <- beta + step
+    if (max(abs(step)) < tol) break
+  }
+  list(beta = beta)
+}
+firth_pair_fits <- list()
+for (pr in pairs3) {
+  lo <- pr[1]; hi <- pr[2]
+  sub <- dat3[dat3$class %in% c(lo, hi), ]
+  Xp <- as.matrix(sub[, c("x", "y")])
+  yp <- as.integer(sub$class == hi)
+  firth_pair_fits[[paste0(lo, "_", hi)]] <- firth_logistic3(Xp, yp)
+}
+firth_eta_pair_raw <- function(lo, hi, Xnew) {
+  fit <- firth_pair_fits[[paste0(lo, "_", hi)]]
+  as.numeric(cbind(1, Xnew) %*% fit$beta)
+}
 
-::: {#fig-lda-partial-coupling layout-ncol=2}
-![Full coupling (reference)](three_class_lda_full_wlw_argmax_reference.png){#fig-lda-partial-full}
+## Signed log-odds of class a over class b (a != b, either order), for a
+## given base classifier's raw pairwise score function.
+make_log_odds <- function(eta_pair_raw) {
+  function(a, b, Xnew) {
+    lo <- min(a, b); hi <- max(a, b)
+    eta <- eta_pair_raw(lo, hi, Xnew)
+    if (a == hi) eta else -eta
+  }
+}
+lda_log_odds   <- make_log_odds(lda_eta_pair_raw)
+firth_log_odds <- make_log_odds(firth_eta_pair_raw)
 
-![Drop pair (1,2)](three_class_lda_partial_wlw_drop12_argmax.png){#fig-lda-partial-drop12}
+## Closed-form partial WLW coupling: p_i : p_j : p_k = exp(eta_ik) : exp(eta_jk) : 1,
+## computed via the standard softmax stabilization from the never-saturated
+## raw log-odds (see prose above).
+couple_predict_partial <- function(Xnew, i, j, k, log_odds_fn) {
+  eta_i <- log_odds_fn(i, k, Xnew)
+  eta_j <- log_odds_fn(j, k, Xnew)
+  Pm <- matrix(0, nrow(Xnew), 3)
+  for (row in seq_len(nrow(Xnew))) {
+    L <- numeric(3)
+    L[i] <- eta_i[row]; L[j] <- eta_j[row]; L[k] <- 0
+    w <- exp(L - max(L))
+    Pm[row, ] <- w / sum(w)
+  }
+  Pm
+}
 
-![Drop pair (1,3)](three_class_lda_partial_wlw_drop13_argmax.png){#fig-lda-partial-drop13}
+## Exact Bayes-optimal classifier from the true generating means.
+bayes_predict3 <- function(Xnew) {
+  D <- cbind(
+    rowSums((Xnew - matrix(mu1, nrow(Xnew), 2, byrow = TRUE))^2),
+    rowSums((Xnew - matrix(mu2, nrow(Xnew), 2, byrow = TRUE))^2),
+    rowSums((Xnew - matrix(mu3, nrow(Xnew), 2, byrow = TRUE))^2)
+  )
+  logf <- -0.5 * D
+  m <- apply(logf, 1, max)
+  ex <- exp(logf - m)
+  ex / rowSums(ex)
+}
 
-![Drop pair (2,3)](three_class_lda_partial_wlw_drop23_argmax.png){#fig-lda-partial-drop23}
+## Grid over the rectangle bounding the three means.
+margin3 <- 4
+gx3 <- seq(min(means3[, 1]) - margin3, max(means3[, 1]) + margin3, length.out = 100)
+gy3 <- seq(min(means3[, 2]) - margin3, max(means3[, 2]) + margin3, length.out = 100)
+grid3 <- expand.grid(x = gx3, y = gy3)
+Xg3 <- as.matrix(grid3)
+nx3 <- length(gx3); ny3 <- length(gy3)
+grid3$pred_bayes <- max.col(bayes_predict3(Xg3))
 
-Argmax decision regions under full (3-term) Wu-Lin-Weng coupling versus dropping one pairwise term from the coupling objective, with LDA as the one-vs-one base classifier and the true Bayes boundary overlaid (dashed).
-:::
+class_cols3 <- c("#e41a1c", "#4daf4a", "#377eb8")   # red, green, blue
+
+add_bayes_boundary3 <- function() {
+  contour(gx3, gy3, matrix(grid3$pred_bayes, nx3, ny3), levels = c(1.5, 2.5),
+          add = TRUE, drawlabels = FALSE, lwd = 2, lty = 2, col = "black")
+}
+
+plot_argmax_panel <- function(pred_col, title) {
+  image(gx3, gy3, matrix(pred_col, nx3, ny3),
+        col = adjustcolor(class_cols3, alpha.f = 0.15), breaks = c(0.5, 1.5, 2.5, 3.5),
+        xlab = "", ylab = "", asp = 1, main = title)
+  points(dat3$x, dat3$y, col = class_cols3[dat3$class], pch = 16, cex = 0.4)
+  points(means3[, 1], means3[, 2], pch = 4, lwd = 3, cex = 1.3)
+  add_bayes_boundary3()
+}
+
+drops <- list(drop12 = c(i = 1, j = 2, k = 3),
+              drop13 = c(i = 1, j = 3, k = 2),
+              drop23 = c(i = 2, j = 3, k = 1))
+drop_titles <- c(drop12 = "drop pair (1,2)", drop13 = "drop pair (1,3)", drop23 = "drop pair (2,3)")
+
+## Layout: a slim legend row spanning both columns on top, then the 3x2
+## grid of panels below.
+layout(matrix(c(1, 1,
+                 2, 3,
+                 4, 5,
+                 6, 7), nrow = 4, byrow = TRUE),
+       heights = c(0.6, 3, 3, 3))
+
+par(mar = c(0, 0, 0, 0))
+plot.new()
+legend("center", bty = "n", cex = 1, horiz = TRUE,
+       legend = c(paste("class", 1:3), "", "Bayes boundary"),
+       col = c(class_cols3, NA, "black"), pch = c(16, 16, 16, NA, NA),
+       lty = c(NA, NA, NA, NA, 2), lwd = 2, seg.len = 2, text.width = NA)
+
+par(mar = c(4, 4, 3, 1))
+for (dn in names(drops)) {
+  d <- drops[[dn]]
+  pred_lda   <- max.col(couple_predict_partial(Xg3, d["i"], d["j"], d["k"], lda_log_odds))
+  pred_firth <- max.col(couple_predict_partial(Xg3, d["i"], d["j"], d["k"], firth_log_odds))
+  plot_argmax_panel(pred_lda, paste0("LDA, ", drop_titles[dn]))
+  plot_argmax_panel(pred_firth, paste0("Firth LR, ", drop_titles[dn]))
+}
+```
