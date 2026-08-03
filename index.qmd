@@ -11,7 +11,9 @@ bibliography: references.bib
 
 # Introduction
 
-Probabilistic modelling provides answer to the quintessential question of probability theory: "What is the probability of an event". In classroom setting, the answer is typically a single number which is deduced from modelling assumptions. For instance, we may assume that we roll a perfectly symmetrical dice or, that subsequent coin flips are identical. In practical applications, however, the question to quantify probability is often asked \emph{repeatedly} with varying context. One naturally expects that the answer will vary depending on the context. For instance, a bank may wonder what is the probability that the borrower will repay a loan. The context could be provided by the current financial disclosure of the borrower's assets. To answer the question it is customary to build a mathematical model.
+Probabilistic modelling provides answer to the quintessential question of probability theory: "What is the probability of an event". In classroom setting, the answer is typically a single number which is deduced from modelling assumptions. 
+For instance, we may assume that we roll a perfectly symmetrical dice or, that subsequent throws are independent. 
+In practical applications, however, the question to quantify probability is often asked \emph{repeatedly} with varying context. One naturally expects that the answer will vary depending on the context. For instance, a bank may wonder what is the probability that the borrower will repay a loan. The context could be provided by the current financial disclosure of the borrower's assets. To answer the question it is customary to build a mathematical model.
 
 There is a multitude of ways to build different models, and thus one may wonder which models are good, or perhaps even which one in a set of models is the best. Historically, the question gained attention in the context of weather forecasting. Since early 20th century weather forecasts are typically are probabilistic. An easy way to check how good a weather forecasters (or more precisely their models) are, is to compare them with climate observations. Climate is computed by taking the expected frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be pretty close.
 
@@ -202,17 +204,18 @@ ratios_df <- read.csv(path.expand("~/ams/calibration_ratios.csv"))
 M_reps <- length(unique(ratios_df$rep))
 ```
 
-To compare how well each regularized model recovers the true class probability, we ran a Monte Carlo simulation with $M=`r M_reps`$ replications: repeatedly sampling $N=50$ points per class from two unit-variance Normal distributions with means 6 apart, fitting L1-penalized logistic regression, L2-penalized logistic regression, Firth logistic regression, Platt scaling, Platt scaling with halved pseudocounts ("2N" targets), and LDA to each sample, and recording, at every sampled point, the ratio of each model's predicted to the true (Bayes-optimal) probability of being class B. @fig-one-dataset-predictions shows what a single replication looks like: the predicted-probability curve from each of the six models, together with the true Bayes curve, fitted to one simulated dataset. @fig-calibration-ratios then shows the resulting distribution of $\log_{10}(\hat{p}/p_{\text{true}})$ for each method, restricted to points sampled from class A; a value of 0 indicates perfect calibration at that point, positive values indicate the model overestimated the true probability, and negative values indicate underestimation. We restrict to class-A points because $p_{\text{true}}$ is bounded away from $1$ there: class A sits 6 SDs from class B, so $p_{\text{true}}$ only approaches $1$ for a class-A point that is itself several SDs from its own mean, which essentially never happens. Class-B points, by contrast, almost always have $p_{\text{true}} \approx 1$, where $\log p$ is insensitive to the model's actual log-odds and the ratio is uninformative regardless of how wrong the model is. Nothing is lost by dropping class-B points: the whole setup — both Gaussians and all six fitting procedures — is symmetric under swapping the class labels and reflecting $x$ about the midpoint, so class-A and class-B behavior are mirror images in distribution. Because the two class means are 6 SDs apart, the two classes end up linearly separable in $x$ (some threshold perfectly splits class A from class B) in the large majority of replications; in that regime, weakly-regularized models can drive predicted probabilities toward 0/1, showing up here as strongly negative log-ratios.
+To compare how well each regularized model recovers the true class probability, we ran a Monte Carlo simulation with $M=`r M_reps`$ replications: repeatedly sampling $N=50$ points per class from two unit-variance Normal distributions with means 6 apart, fitting L1-penalized logistic regression, L2-penalized logistic regression, Firth logistic regression, Platt scaling, Platt scaling with halved pseudocounts ("2N" targets), LDA, and Bayesian logistic regression (posterior mode) under two data-independent weakly informative priors — the Cauchy(0, 2.5) default of Gelman et al. (2008) and a lighter-tailed Student-$t_7$(0, 2.5) variant — to each sample, and recording, at every sampled point, the ratio of each model's predicted to the true (Bayes-optimal) probability of being class B. Unlike Firth's Jeffreys-prior penalty, which depends on the design matrix, both weakly informative priors are fixed in advance; the Cauchy's heavy tails let strongly informative data override the prior, while the $t_7$ shrinks large coefficients more aggressively. @fig-one-dataset-predictions shows what a single replication looks like: the predicted-probability curve from each of the eight models, together with the true Bayes curve, fitted to one simulated dataset. @fig-calibration-ratios then shows the resulting distribution of $\log_{10}(\hat{p}/p_{\text{true}})$ for each method, restricted to points sampled from class A; a value of 0 indicates perfect calibration at that point, positive values indicate the model overestimated the true probability, and negative values indicate underestimation. We restrict to class-A points because $p_{\text{true}}$ is bounded away from $1$ there: class A sits 6 SDs from class B, so $p_{\text{true}}$ only approaches $1$ for a class-A point that is itself several SDs from its own mean, which essentially never happens. Class-B points, by contrast, almost always have $p_{\text{true}} \approx 1$, where $\log p$ is insensitive to the model's actual log-odds and the ratio is uninformative regardless of how wrong the model is. Nothing is lost by dropping class-B points: the whole setup — both Gaussians and all eight fitting procedures — is symmetric under swapping the class labels and reflecting $x$ about the midpoint, so class-A and class-B behavior are mirror images in distribution. Because the two class means are 6 SDs apart, the two classes end up linearly separable in $x$ (some threshold perfectly splits class A from class B) in the large majority of replications; in that regime, weakly-regularized models can drive predicted probabilities toward 0/1, showing up here as strongly negative log-ratios.
 
 ```{r}
 #| label: fig-one-dataset-predictions
 #| echo: false
-#| fig-cap: Predicted P(class B | x) from each of the six models, together with the true Bayes-optimal probability, for a single simulated dataset (the first of the M Monte Carlo replications used in @fig-calibration-ratios below). Tick marks along the bottom show the sampled class A (dark) and class B (light) points.
+#| fig-cap: Predicted P(class B | x) from each of the eight models, together with the true Bayes-optimal probability, for a single simulated dataset (the first of the M Monte Carlo replications used in @fig-calibration-ratios below). Tick marks along the bottom show the sampled class A (dark) and class B (light) points.
 #| fig-width: 7
 #| fig-height: 5
 suppressPackageStartupMessages({
   library(glmnet)
   library(logistf)
+  library(arm)
 })
 
 set.seed(1)   # same seed as simulate_calibration_ratios.R -> reproduces its first replication
@@ -262,12 +265,30 @@ b_lda <- (m2 - m1) / s2_pooled
 a_lda <- -(m2^2 - m1^2) / (2 * s2_pooled)
 p_lda <- plogis(a_lda + b_lda * xg)
 
+## Bayesian logistic regression, posterior mode via arm::bayesglm, with
+## Gelman et al.'s (2008) data-independent weakly informative priors:
+## Cauchy(0, 2.5) (prior.df = 1), and a Student-t (df = 4) variant.
+cauchy_fit <- bayesglm(yb ~ x, family = binomial,
+                       prior.scale = 2.5, prior.df = 1,
+                       prior.scale.for.intercept = 10,
+                       prior.df.for.intercept = 1)
+p_cauchy <- plogis(coef(cauchy_fit)[1] + coef(cauchy_fit)[2] * xg)
+
+t_fit <- bayesglm(yb ~ x, family = binomial,
+                  prior.scale = 2.5, prior.df = 4,
+                  prior.scale.for.intercept = 10,
+                  prior.df.for.intercept = 4)
+p_t <- plogis(coef(t_fit)[1] + coef(t_fit)[2] * xg)
+
 curves <- list(L1 = p_l1, L2 = p_l2, Firth = p_firth,
-               Platt = p_platt, Platt_2N = p_platt2, LDA = p_lda)
+               Platt = p_platt, Platt_2N = p_platt2, LDA = p_lda,
+               Cauchy = p_cauchy, StudentT = p_t)
 cols <- c(L1 = "#1b9e77", L2 = "#d95f02", Firth = "#7570b3",
-          Platt = "#e7298a", Platt_2N = "#66a61e", LDA = "#e6ab02")
+          Platt = "#e7298a", Platt_2N = "#66a61e", LDA = "#e6ab02",
+          Cauchy = "#a6761d", StudentT = "#666666")
 labs <- c(L1 = "L1 logistic", L2 = "L2 logistic", Firth = "Firth logistic",
-          Platt = "Platt scaling", Platt_2N = "Platt (2N targets)", LDA = "LDA")
+          Platt = "Platt scaling", Platt_2N = "Platt (2N targets)", LDA = "LDA",
+          Cauchy = "Cauchy(0, 2.5) prior", StudentT = "Student-t(4) prior")
 
 par(mar = c(4, 4.5, 1, 1))
 plot(xg, p_true, type = "l", lwd = 3, col = "black",
@@ -278,22 +299,25 @@ for (mdl in names(curves)) {
 rug(x1, col = "grey30")
 rug(x2, col = "grey60")
 
-legend("bottomright", bty = "n",
+legend("bottomright", bty = "n", cex = 0.85,
        legend = c("True (Bayes)", unname(labs[names(curves)])),
-       col = c("black", unname(cols[names(curves)])), lwd = c(3, rep(2, 6)))
+       col = c("black", unname(cols[names(curves)])),
+       lwd = c(3, rep(2, length(curves))))
 ```
 
 ```{r}
 #| label: fig-calibration-ratios
 #| echo: false
 #| fig-cap: Distribution of log10(predicted probability / true probability) for each regularization method, restricted to class-A points and pooled across all Monte Carlo replications. The dashed red line marks perfect calibration (ratio = 1).
-#| fig-width: 9
+#| fig-width: 11
 #| fig-height: 6
-model_order  <- c("L1", "L2", "Firth", "Platt", "Platt_2N", "LDA")
+model_order  <- c("L1", "L2", "Firth", "Platt", "Platt_2N", "LDA",
+                  "Cauchy", "StudentT")
 model_labels <- c(L1 = "L1 logistic", L2 = "L2 logistic", Firth = "Firth logistic",
-                  Platt = "Platt scaling", Platt_2N = "Platt (2N targets)", LDA = "LDA")
+                  Platt = "Platt scaling", Platt_2N = "Platt (2N targets)", LDA = "LDA",
+                  Cauchy = "Cauchy(0, 2.5) prior", StudentT = "Student-t(4) prior")
 
-par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+par(mfrow = c(2, 4), mar = c(4, 4, 3, 1))
 for (m in model_order) {
   log_ratio <- ratios_df$log10_ratio[ratios_df$model == m & ratios_df$class == "A"]
   h <- hist(log_ratio, breaks = 40, plot = FALSE)

@@ -2,10 +2,13 @@
 #
 # Repeatedly sample N = 50 points per class from two unit-variance Normal
 # distributions with means 6 apart (class A ~ N(0,1), class B ~ N(6,1)),
-# fit six probability models -- L1-penalized logistic regression,
+# fit eight probability models -- L1-penalized logistic regression,
 # L2-penalized logistic regression, Firth logistic regression, Platt
-# scaling, Platt scaling with halved pseudocounts ("2N" targets), and LDA
-# -- and record, for every sampled point in every replication, the ratio
+# scaling, Platt scaling with halved pseudocounts ("2N" targets), LDA,
+# Bayesian logistic regression with Gelman et al.'s (2008) weakly
+# informative Cauchy(0, 2.5) prior (posterior mode via arm::bayesglm), and
+# the same with a Student-t (df = 4) prior -- and record, for every sampled
+# point in every replication, the ratio
 # of each model's PREDICTED probability to the TRUE Bayes-optimal
 # probability of being class B, log_p_hat / log_p_true. The downstream
 # analysis (index.qmd) restricts this to class-A points only: class A is
@@ -43,6 +46,7 @@
 suppressPackageStartupMessages({
   library(glmnet)   # L1/L2-penalized logistic regression
   library(logistf)  # Firth's penalized-likelihood logistic regression
+  library(arm)      # bayesglm: Gelman et al. weakly informative priors
 })
 
 set.seed(1)
@@ -112,8 +116,33 @@ fit_one_rep <- function(rep_id) {
   a_lda <- -(m2^2 - m1^2) / (2 * s2_pooled)
   eta_lda <- a_lda + b_lda * x
 
+  ## Bayesian logistic regression, posterior mode via arm::bayesglm, with
+  ## Gelman, Jakulin, Pittau & Su's (2008) data-INDEPENDENT weakly
+  ## informative default: independent Cauchy(0, 2.5) priors on the
+  ## coefficients and Cauchy(0, 10) on the intercept, after bayesglm's
+  ## internal rescaling of the predictor (scaled = TRUE, their
+  ## recommendation). Unlike Firth's Jeffreys prior, this prior does not
+  ## depend on the design matrix. prior.df = 1 is the Cauchy.
+  cauchy_fit <- bayesglm(yb ~ x, family = binomial,
+                         prior.scale = 2.5, prior.df = 1,
+                         prior.scale.for.intercept = 10,
+                         prior.df.for.intercept = 1)
+  eta_cauchy <- coef(cauchy_fit)[1] + coef(cauchy_fit)[2] * x
+
+  ## Same construction with a Student-t (df = 4) prior: lighter tails than
+  ## the Cauchy (df = 1) but still well short of Normal, so it sits between
+  ## Cauchy's robustness and L2/Gaussian shrinkage rather than collapsing
+  ## toward L2 the way a higher df (close to the top of the commonly
+  ## recommended 3-7 range) would.
+  t_fit <- bayesglm(yb ~ x, family = binomial,
+                    prior.scale = 2.5, prior.df = 4,
+                    prior.scale.for.intercept = 10,
+                    prior.df.for.intercept = 4)
+  eta_t <- coef(t_fit)[1] + coef(t_fit)[2] * x
+
   etas <- list(L1 = eta_l1, L2 = eta_l2, Firth = eta_firth,
-               Platt = eta_platt, Platt_2N = eta_platt2, LDA = eta_lda)
+               Platt = eta_platt, Platt_2N = eta_platt2, LDA = eta_lda,
+               Cauchy = eta_cauchy, StudentT = eta_t)
 
   do.call(rbind, lapply(names(etas), function(model_name) {
     log_p_hat <- plogis(etas[[model_name]], log.p = TRUE)
@@ -137,3 +166,4 @@ out_file <- path.expand("~/ams/calibration_ratios.csv")
 write.csv(results, out_file, row.names = FALSE)
 cat(sprintf("Wrote %s with %d rows (%d reps x %d points x %d models)\n",
             out_file, nrow(results), n_reps, 2 * n, length(unique(results$model))))
+stopifnot(length(unique(results$model)) == 8)
