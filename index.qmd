@@ -1,8 +1,21 @@
 ---
 title: Multiplicative miscalibration of logistic models
-authors:
-  - name: Ondrej Šuch, Peter Novotný
-    affiliation: The University
+
+author:
+  - name: Ondrej Šuch
+    affiliations:
+      - name: Matematický ústav SAV
+        city: Banská Bystrica
+  - name: Muhammad Azeem
+    affiliations:
+      - name: Matematický ústav SAV
+        city: Banská Bystrica
+      - name: Univerzita Komenského v Bratislave
+        city: Bratislava
+  - name: Peter Novotný
+    affiliations:
+      - name: Žilinská Univerzita v Žiline
+        city: Žilina
     roles: writing
     corresponding: true
 notebook-links: false
@@ -13,38 +26,79 @@ bibliography: references.bib
 
 Probabilistic modelling provides answer to the quintessential question of probability theory: "What is the probability of an event". In classroom setting, the answer is typically a single number which is deduced from modelling assumptions. 
 For instance, we may assume that we roll a perfectly symmetrical dice or, that subsequent throws are independent. 
-In practical applications, however, the question to quantify probability is often asked \emph{repeatedly} with varying context. One naturally expects that the answer will vary depending on the context. For instance, a bank may wonder what is the probability that the borrower will repay a loan. The context could be provided by the current financial disclosure of the borrower's assets. To answer the question it is customary to build a mathematical model.
+In practical applications, however, the question to quantify probability is often asked *repeatedly* with varying context. One naturally expects that the answer will vary depending on the context. For instance, a bank may wonder what is the probability that the borrower will repay a loan. The context could be provided by the current financial disclosure of the applicant. To answer the question it is customary to build a *probabilistic model*.
+<!-- which is really an algorithm taking input (the context) and producing the desired probability as its output. -->
 
-There is a multitude of ways to build different models, and thus one may wonder which models are good, or perhaps even which one in a set of models is the best. Historically, the question gained attention in the context of weather forecasting. Since early 20th century weather forecasts are typically are probabilistic. An easy way to check how good a weather forecasters (or more precisely their models) are, is to compare them with climate observations. Climate is computed by taking the expected frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be pretty close.
+There is a multitude of ways to build different models, and thus one may ask how to compare their quality. Non-probabilistic ways of comparison use the 2x2 contingency matrix with rows and columns corresponding to predictions (probability > 0.5) and observed outcomes. One can use any number of metrics for comparison starting from accuracy (ratio of the diagonal entries to the whole matrix), through precision and recall to Matthews correlation coefficient. However, this evaluation disregards the probabilistic information.
 
-There is an even finer method to compare forecast's fidelity. We can subdivide the probability interval $[0,1]$ into (nonintersecting) subintervals. For each subinterval, we compare the observed frequency of rain on days when the forecast fell into it. Suppose for instance that one the subintervals was $I = [0.45, 0.55]$. We would expect that the probability $p$ of rain on days when forecast fell into $I$ would be around 0.5 A model that matches this expectation reasonably well is said to be *well-calibrated*. An example of real-world diagram that checks for calibration is in
+Historically, the question of measuring quality of probabilistic predictions gained attention in the context of weather forecasting. Since early 20th century weather forecasts are typically  probabilistic. A simple check of how good a weather forecasters (or more precisely their models) are, is to compare their predictions with climate observations. *Climate* is obtained by computing the expected event frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be pretty close.
 
-![Example of weather calibration](BrierExample.png)
+There is an even finer method to compare forecast's fidelity. We can subdivide the probability interval $[0,1]$ into (nonintersecting) subintervals. For each subinterval, we compare the observed frequency of rain on days when the forecast fell into it [@zadrozny2001obtaining]. Suppose for instance that one of the subintervals was $I_m = [0.45, 0.55]$. We would expect that the probability $p$ of rain on days when forecast fell into $I_m$ would be around 0.5 A model that matches this expectation reasonably well is said to be *well-calibrated*. Calibration is typically judged visually by preparing a reliability diagram. or by computing a score such as expected calibration error.
 
-Good calibration of a probabilistic model is a very desirable property.
+In our paper we will discuss *multiplicative miscalibration* in the context of logistic models. This phenomenon
+is not detected by currently used techniques, yet may have significant repercussions in applications.
+
+
+
+<!-- An example of real-world diagram that checks for calibration is in -->
+
+<!-- ![Example of weather calibration](BrierExample.png) -->
+
+<!-- Good calibration of a probabilistic model is a very desirable property. -->
 
 # Logistic models
 
-A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. Mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a logistic model we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability $$
+A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. The ususal mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a *logistic model* we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability of a context-dependent event by the following formula
+$$
 p(\mathbf{x}) = \sigma(\mathbf{w} \cdot \mathbf{x}),\quad\textrm{where } \sigma(x) = \frac{\exp x}{1 + \exp{x}}.
-$$ {#eq-logistic} Note that we have $$
+$$ {#eq-logistic} 
+Note that  the model allows predicting probabilities in the whole range $(0,1)$ since $$
 \begin{aligned}
 \lim_{x\rightarrow-\infty} \sigma(x) = 0, \quad \textrm{and}\quad
-\lim_{x\rightarrow\infty} \sigma(x) = 1
-\end{aligned},
-$$ {#eq-logistic2} and thus this model allows predicting probabilities in the whole range $(0,1)$.
+\lim_{x\rightarrow\infty} \sigma(x) = 1.
+\end{aligned}
+$$ {#eq-logistic2}
 
-The two principal examples of logistic models are linear discriminant analysis and logistic regression. They both have form @eq-logistic, but they differ in the method they use to estimate the weight vector $\mathbf{w}$. Logistic regression is more commonly used, but they are considered to give approximately the same results. We can illustrate it on the famous iris dataset. The iris dataset was created in 1930's by Edgar Anderson, an American botanist. It contains four measurements (features) of three iris species
+The two principal examples of logistic models are linear discriminant analysis (LDA) and logistic regression. They both yield prediction in the form @eq-logistic, but they differ in their parameters, as well as in the methods to estimate them. Although logistic regression is more commonly used,  they are considered to give approximately the same results. We can illustrate it on the famous iris dataset. The iris dataset was created in 1930's by Edgar Anderson, an American botanist. It contains four measurements (features) of three iris species
 
--   iris versicolor L.,
+-   iris versicolor L. (L. indicates catalogued by famous Swedish biologist Carl Linnaeus),
 -   iris virginica L.,
 -   iris setosa.
 
-From statistical point of view the important property of the dataset is that the features are approximately normally distributed. Let us illustrate this by comparing the distributions of one the measurements (the width of petal) as shown in @fig-density.
+From statistical point of view the important property of the dataset is that the features are approximately normally distributed. We can check this for one of the measurements (the width of petal) with normal quantile-quantile plots, shown in @fig-qq: for both versicolor and virginica the points fall close to the reference line, indicating approximate normality. 
+
+<!-- Having established this, we compare the class-conditional distributions of the same measurement in @fig-density. -->
+
+```{r}
+#| label: fig-qq
+#| echo: false
+#| fig-cap: Normal Q-Q plots of Petal.Width for versicolor and virginica. Points close to the reference line indicate that the class-conditional distribution is approximately normal.
+#| fig-width: 8
+#| fig-height: 4
+d_qq <- droplevels(subset(iris, Species %in% c("versicolor", "virginica")))
+
+col_versicolor <- "#1b9e77"
+col_virginica  <- "#d95f02"
+
+par(mfrow = c(1, 2), mar = c(4, 4.5, 3, 1))
+
+pw_versicolor <- d_qq$Petal.Width[d_qq$Species == "versicolor"]
+qqnorm(pw_versicolor, col = col_versicolor, pch = 19,
+       main = "versicolor", xlab = "Theoretical quantiles",
+       ylab = "Petal.Width")
+qqline(pw_versicolor, col = col_versicolor, lwd = 2)
+
+pw_virginica <- d_qq$Petal.Width[d_qq$Species == "virginica"]
+qqnorm(pw_virginica, col = col_virginica, pch = 19,
+       main = "virginica", xlab = "Theoretical quantiles",
+       ylab = "Petal.Width")
+qqline(pw_virginica, col = col_virginica, lwd = 2)
+```
 
 ```{r}
 #| label: fig-density
 #| echo: false
+#| eval: false
 #| fig-cap: Class-conditional densities of Petal.Width for versicolor and virginica (kernel density estimate)
 #| dev: !expr if (knitr::is_latex_output()) "tikz" else "png"
 #| fig-ext: !expr if (knitr::is_latex_output()) "tex" else "png"
@@ -85,9 +139,11 @@ legend("topright", bty = "n", legend = legend_labels,
        col = c(col_versicolor, col_virginica), lwd = 2, lty = c(1, 2))
 ```
 
-The results are shown in @fig-chunk1. They include Bayes classifier $$
+LDA assumes normality, and thus we would expect LDA model to be a good match when modelling species prediction using the width of petals. Notably the assumption is not needed when applying logistic regression. As @fig-chunk1 shows, both models yield approximately equal predictions. Over the considered range, the biggest difference in predicted probabilities between the models in 0.14.
+
+<!-- They include Bayes classifier $$
 \hat p(virginica | x) = \frac{\hat p(x \mid virginica)P(virginica)}{\hat p(x \mid virginica)P(virginica)+ \hat p(x \mid versicolor)P(versicolor)}
-$$
+$$ -->
 
 ```{r }
 #| label: fig-chunk1
@@ -108,22 +164,22 @@ p_glm <- predict(glm_fit, newdata = data.frame(Petal.Width = xg), type = "respon
 
 ## Nonparametric ("plug-in") Bayes classifier: estimate each class-conditional
 ## density via KDE, then combine via Bayes' rule (equal priors, n = 50 each).
-dens_versicolor <- density(d$Petal.Width[d$Species == "versicolor"])
-dens_virginica  <- density(d$Petal.Width[d$Species == "virginica"])
-f_versicolor <- approxfun(dens_versicolor$x, dens_versicolor$y, rule = 2)
-f_virginica  <- approxfun(dens_virginica$x, dens_virginica$y, rule = 2)
-p_bayes <- f_virginica(xg) / (f_versicolor(xg) + f_virginica(xg))
+# dens_versicolor <- density(d$Petal.Width[d$Species == "versicolor"])
+# dens_virginica  <- density(d$Petal.Width[d$Species == "virginica"])
+# f_versicolor <- approxfun(dens_versicolor$x, dens_versicolor$y, rule = 2)
+# f_virginica  <- approxfun(dens_virginica$x, dens_virginica$y, rule = 2)
+# p_bayes <- f_virginica(xg) / (f_versicolor(xg) + f_virginica(xg))
 
 col_lda   <- "#1b9e77"
 col_glm   <- "#d95f02"
-col_bayes <- "#7570b3"
+# col_bayes <- "#7570b3"
 
 par(mar = c(4, 4.5, 3, 1))
 plot(xg, p_lda, type = "l", lwd = 2, col = col_lda, yaxt = "n",
      xlab = "Petal.Width", ylab = "P(virginica | Petal.Width)",
      main = "", ylim = c(0, 1))
 lines(xg, p_glm, lwd = 2, lty = 2, col = col_glm)
-lines(xg, p_bayes, lwd = 2, lty = 3, col = col_bayes)
+# lines(xg, p_bayes, lwd = 2, lty = 3, col = col_bayes)
 
 ## y-axis on [0,1], tick labels to 1 decimal place
 y_ticks <- seq(0, 1, by = 0.2)
@@ -141,13 +197,15 @@ arrows(x0 = x_max, y0 = y_lo, x1 = x_max, y1 = y_hi,
        code = 3, angle = 90, length = 0.05, lwd = 1.5, col = "black")
 text(x_max, (y_lo + y_hi) / 2, sprintf("max gap = %.2f", gap[i_max]), pos = 2, cex = 0.85)
 
-legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression", "Bayes (KDE plug-in)"),
-       col = c(col_lda, col_glm, col_bayes), lwd = 2, lty = c(1, 2, 3))
+legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression"),
+       col = c(col_lda, col_glm), lwd = 2, lty = c(1, 2))
+# legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression", "Bayes (KDE plug-in)"),
+#        col = c(col_lda, col_glm, col_bayes), lwd = 2, lty = c(1, 2, 3))
 ```
 
-Interestingly, we couldn't carry out the comparison for virginica and setosa samples because the fitting procedure for logistic regression will not converge. Let us examine the reason. Logistic regression model is fitted by maximizing the likelihood on the dataset with features $\mathbf{x_i}$ and provided labels $y_i$. In our case $$
+Interestingly, we cannot carry out the comparison for virginica and setosa samples because the fitting procedure for logistic regression will not converge. Let us explain the reason. Logistic regression model is fitted by maximizing the likelihood on the dataset with features $\mathbf{x_i}$ and provided labels $y_i$. In our case $$
 \overbrace{L(w, b)}^{\textrm{likelihood function}} = \prod_i \left\{ \sigma(wx_i + b)\ \ \ \ \mathrm{ when  }\ y_i = virginica \atop 1 - \sigma(wx_i + b)\ \mathrm{ when  }\ y_i = versicolor \right\}.
-$$ The key fact that the ranges of petal width do not intersect (the data is linearly separable), as seen from summary statistics for each species shown in @tbl-petalwidth. For any $\lambda$ we have $$
+$$ The key fact that the ranges of petal width do not intersect (the data is linearly separable), as seen from summary statistics for each species shown in @tbl-petalwidth. For any $\lambda > 0$ we have $$
 \begin{aligned}
 \lambda (x_i - 1) > 0 \quad y_i = virginica\\
 \lambda (x_i - 1) < 0 \quad y_i = setosa
@@ -179,28 +237,64 @@ knitr::kable(petal_width_tab, digits = 2, row.names = FALSE, escape = FALSE,
 
 <!-- Since the ranges do not intersect, it is possible to fit model so that probabilities at dataset points are arbitrarily close to the true values zero and one. -->
 
-This problem does not occur with LDA. Fitting LDA can be done in either of two ways
 
--   by maximizing Fisher discriminant ratio for vector $\mathbf{w}$, or
--   by maximum likelihood method where the parameters are the means $\mu_1, \mu_2$ and joint covariance matrix $\Sigma$ which form a generative model of data points $(\mathbf{x}_i, y_i)$.
+<!-- This problem does not occur with LDA. Let us recall that LDA model can be introduced one of two equivalent ways -->
 
-When using the first approach, the existence of the optimal $\mathbf{w}$ is assured by the fact that Fisher discriminant ratio is the same for collinear vectors, and thus follows from the fact that a continuous function always attains a maximum on a sphere, a compact set.
+<!-- -   by maximizing Fisher discriminant ratio for vector $\mathbf{w}$ as introduced, or -->
+<!-- -   by maximum likelihood method where the parameters are the group means $\mu_1, \mu_2$ and joint covariance matrix $\Sigma$ which form a generative model of data points $(\mathbf{x}_i, y_i)$. -->
 
-This argument will not work for logistic regression, since the objective, the expected likelihood $L(\mathbf{w}, b)$ is *not* invariant to rescaling the model's coefficients.
+<!-- The first approach is considerably simpler. It is worth point out that although Fisher was a big proponent of maximum likelihood method, he eschewed maximum likelihood estimation and instead used the first approach when he introduced LDA [@fisher1936use]. The drawback of the first approach is that it does not directly yield $(\mathbf{w},b)$ in @eq-logistic. Instead it determines $\mathbf{w}$ up to a scalar multiple, since Fisher discriminant ratio is invariant to scaling of $\mathbf{w}$. -->
 
-An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on the distribution of the variate for both classes if we take enough samples, the ranges will intersect. The probability of the intersection can be computed exactly using order statistics. Suppose we draw $n$ samples per class, and let $F_s$, and $F_v$, $f_v$ denote the distribution functions of the two classes and the density of the second class. The setosa range $[\min_i X_i, \max_i X_i]$ fails to intersect the virginica range precisely when $\max_i X_i < \min_j Y_j$ (the reverse ordering has negligible probability, as setosa's mean lies far below virginica's). Conditioning on the position of the minimum $\min_j Y_j$, whose density is $n\,(1-F_v(t))^{n-1} f_v(t)$, and using independence of the two samples, $$
+<!-- When using the first approach, the existence of the optimal $\mathbf{w}$ is assured by the fact that Fisher discriminant ratio is continuous in parameter $\mathbf{w}$ and is the same for any pair of collinear vectors. This allows to reduce the question to maximize the ratio on a sphere, which is a compact set, and thus a continuous function always attains maximum. -->
+
+<!-- This argument would not work for logistic regression, since the objective, the expected likelihood $L(\mathbf{w}, b)$ is *not* invariant to rescaling the model's coefficients. -->
+
+An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on class conditional densities,  if we take enough samples, the ranges *will* intersect. The probability of the intersection can be computed exactly using order statistics. Suppose we draw $n$ samples per class, and let $F_s$, and $F_v$, $f_v$ denote the distribution functions of the two classes and the density of the second class. The setosa range $[\min_i X_i, \max_i X_i]$ fails to intersect the virginica range precisely when $\max_i X_i < \min_j Y_j$ (the reverse ordering has negligible probability, as setosa's mean lies far below virginica's). Conditioning on the position of the minimum $\min_j Y_j$, whose density is $n\,(1-F_v(t))^{n-1} f_v(t)$, and using independence of the two samples, $$
 P\left(\max_i X_i < \min_j Y_j\right) = \int_{-\infty}^{\infty} F_s(t)^n \; n\,\bigl(1-F_v(t)\bigr)^{n-1} f_v(t)\, dt.
-$$ Evaluating this integral numerically with the plug-in parameters from @tbl-petalwidth (setosa: $\mu = 0.25$, $\sigma = 0.11$; virginica: $\mu = 2.03$, $\sigma = 0.27$) and solving for the sample size at which it drops to $1/2$ shows that one would need $n \approx 464\,000$ samples *per class* before the ranges have at least a 50% chance to intersect. The intuition for this enormous number is that the two means are more than six pooled standard deviations apart, so an intersection requires a joint extreme-tail event. Another way is needed. We will provide several alternatives in the next section.
+$$ Evaluating this integral numerically with the plug-in parameters from @tbl-petalwidth (setosa: $\mu = 0.25$, $\sigma = 0.11$; virginica: $\mu = 2.03$, $\sigma = 0.27$) and solving for the sample size at which it drops to $1/2$ shows that one would need $n \approx 464\,000$ samples *per class* before the ranges have at least a 50% chance to intersect. The intuition for this enormous number is that the two means are more than six pooled standard deviations apart, so an intersection requires a joint extreme-tail event. Another modelling method is needed. We will introduce several alternatives in the next section.
 
 # Regularization of logistic regression
 
-T
+There are two principal paradigms to fit a logistic model in the case of linear separation
+
+- applying prior on coefficients as typical in Bayesian statistics, or
+- extending Bernoulli model used in logistic regression to what we could call a *fractional Bernoulli model*.
+
+In the first paradigm uses the Bayes formula $\textrm{posterior} \propto \textrm{likelihood}\times \textrm{prior}$ to replace maximization of log likelihood with
+$$
+\max_{\mathbf{w}, b}  \log L(\mathbf{w},b)  + \log (\textrm{prior}(\mathbf{w})).
+$$
+There are several commonly used priors 
+
+- L2 data dependent regularization, where the prior is the multivariate normal distribution; this method mirrors the classical Tikhonov's regularization [@tikhonov1963solution],
+- L1 data dependent regularization, where the prior is the multivariate Cauchy distribution [@friedman2010regularization]; this method encourages model's sparsity,
+- Firth logistic regression, where one uses Jeffrey's prior [@firth1993bias]; this method is canonical,
+- weakly informative distribution proposed in [@gelman2008weakly],
+- multidimensional Student's $t$-distribution [@ghosh2018use].
+
+The first two methods use crossvalidation to select the scale of the prior. The last two methods do not take the data into account, they only require that they are suitably transformed.
+
+The second paradigm has been used in machine learning under names like Platt's scaling [@platt1999probabilistic] or label smoothing [@muller2019does]. In essence it enlarges the training dataset by replacing each sample in a group with label $y$ with $R$ samples with label $y$ and additional one sample with opposite label. This simple trick transforms a dataset with separable groups into a dataset where the two groups are inseparable. The way to choose $R$ is inspired by Laplace's (often ridiculed) work on calculating probability that sun will tomorrow. It starts with a prior on probabilities and uses Bayes theorem to derive the posterior after $k$ events of one kind. Platt in his paper on SVM proposed using Laplace prior---the uniform prior on interval $[0,1]$. Somewhat overlooked was that Jeffrey's prior is a natural alternative. @tbl-prior-r summarizes the two choices, the value of $R$ each implies, and the name we use for the resulting method throughout the rest of the paper.
+
+```{r}
+#| label: tbl-prior-r
+#| echo: false
+#| tbl-cap: Two choices of prior on the label probability $p$, the pseudocount $R$ they imply via the Beta posterior mean $(k+R)/(n+2R)$, and the name given to the resulting scaling method.
+prior_tab <- data.frame(
+  Prior      = c("Laplace (uniform)", "Jeffreys"),
+  Beta_prior = c("Beta(1, 1)", "Beta(1/2, 1/2)"),
+  R          = c("1", "1/2"),
+  Method     = c("Platt scaling", "SAH scaling")
+)
+knitr::kable(prior_tab, row.names = FALSE,
+             col.names = c("Prior", "Beta prior", "Implied R", "Method name"))
+```
 
 ```{r}
 #| label: load-calibration-ratios
 #| echo: false
 #| include: false
-ratios_df <- read.csv(path.expand("~/ams/calibration_ratios.csv"))
+ratios_df <- read.csv(path.expand("calibration_ratios.csv"))
 M_reps <- length(unique(ratios_df$rep))
 ```
 
@@ -286,23 +380,60 @@ curves <- list(L1 = p_l1, L2 = p_l2, Firth = p_firth,
 cols <- c(L1 = "#1b9e77", L2 = "#d95f02", Firth = "#7570b3",
           Platt = "#e7298a", Platt_2N = "#66a61e", LDA = "#e6ab02",
           Cauchy = "#a6761d", StudentT = "#666666")
-labs <- c(L1 = "L1 logistic", L2 = "L2 logistic", Firth = "Firth logistic",
-          Platt = "Platt scaling", Platt_2N = "Platt (2N targets)", LDA = "LDA",
+ltys <- c(L1 = 2, L2 = 3, Firth = 4,
+          Platt = 5, Platt_2N = 6, LDA = 2,
+          Cauchy = 3, StudentT = 4)
+labs <- c(L1 = "data dependent L1", L2 = "data dependent L2", Firth = "Firth logistic",
+          Platt = "Platt scaling", Platt_2N = "SAH scaling", LDA = "LDA",
           Cauchy = "Cauchy(0, 2.5) prior", StudentT = "Student-t(4) prior")
 
 par(mar = c(4, 4.5, 1, 1))
 plot(xg, p_true, type = "l", lwd = 3, col = "black",
      xlab = "x", ylab = "P(class B | x)", ylim = c(0, 1))
+abline(h = 0.5, col = "grey50", lwd = 1, lty = 2)
 for (mdl in names(curves)) {
-  lines(xg, curves[[mdl]], lwd = 2, col = cols[mdl])
+  lines(xg, curves[[mdl]], lwd = 2, col = cols[mdl], lty = ltys[mdl])
 }
 rug(x1, col = "grey30")
 rug(x2, col = "grey60")
 
-legend("bottomright", bty = "n", cex = 0.85,
+## Nudge the legend up by half a text line from its default "bottomright" spot.
+leg_probe <- legend("bottomright", bty = "n", cex = 0.85,
        legend = c("True (Bayes)", unname(labs[names(curves)])),
        col = c("black", unname(cols[names(curves)])),
-       lwd = c(3, rep(2, length(curves))))
+       lwd = c(3, rep(2, length(curves))),
+       lty = c(1, unname(ltys[names(curves)])),
+       plot = FALSE)
+line_h <- strheight("A", cex = 0.85)
+legend(x = leg_probe$rect$left, y = leg_probe$rect$top + 0.5 * line_h,
+       bty = "n", cex = 0.85,
+       legend = c("True (Bayes)", unname(labs[names(curves)])),
+       col = c("black", unname(cols[names(curves)])),
+       lwd = c(3, rep(2, length(curves))),
+       lty = c(1, unname(ltys[names(curves)])))
+
+## Inset: class-conditional normal densities, upper-left quadrant.
+col_A <- "grey30"
+col_B <- "grey60"
+
+d_true_A <- dnorm(xg, mu1, sdv)
+d_true_B <- dnorm(xg, mu2, sdv)
+
+peak_h <- max(d_true_A, d_true_B)
+
+ip <- par(fig = c(0.13, 0.52, 0.649, 0.95), new = TRUE,
+          mar = c(2.2, 2.5, 1, 0.5), cex = 0.7)
+plot(xg, d_true_A, type = "l", lwd = 1.5, col = col_A,
+     xlab = "", ylab = "", ylim = c(0, peak_h * 1.3),
+     xaxt = "n", yaxt = "n")
+lines(xg, d_true_B, lwd = 1.5, col = col_B)
+axis(1, tck = -0.05, mgp = c(0, 0.3, 0))
+axis(2, tck = -0.05, mgp = c(0, 0.4, 0), las = 1)
+title(xlab = "x", ylab = "density", mgp = c(1.1, 0, 0))
+box()
+text(mu1, dnorm(mu1, mu1, sdv), "class A", col = col_A, cex = 0.75, pos = 3)
+text(mu2, dnorm(mu2, mu2, sdv), "class B", col = col_B, cex = 0.75, pos = 3)
+par(ip)
 ```
 
 ```{r}
@@ -313,11 +444,12 @@ legend("bottomright", bty = "n", cex = 0.85,
 #| fig-height: 6
 model_order  <- c("L1", "L2", "Firth", "Platt", "Platt_2N", "LDA",
                   "Cauchy", "StudentT")
-model_labels <- c(L1 = "L1 logistic", L2 = "L2 logistic", Firth = "Firth logistic",
-                  Platt = "Platt scaling", Platt_2N = "Platt (2N targets)", LDA = "LDA",
+model_labels <- c(L1 = "data dependent L1", L2 = "data dependent L2", Firth = "Firth logistic",
+                  Platt = "Platt scaling", Platt_2N = "SAH scaling", LDA = "LDA",
                   Cauchy = "Cauchy(0, 2.5) prior", StudentT = "Student-t(4) prior")
 
-par(mfrow = c(2, 4), mar = c(4, 4, 3, 1))
+par(mfrow = c(2, 4), mar = c(4.5, 4.5, 3, 1),
+    cex.axis = 1.2, cex.lab = 1.25, cex.main = 1.3)
 for (m in model_order) {
   log_ratio <- ratios_df$log10_ratio[ratios_df$model == m & ratios_df$class == "A"]
   h <- hist(log_ratio, breaks = 40, plot = FALSE)
@@ -334,7 +466,7 @@ for (m in model_order) {
   y_bot <- ymax * 0.45
   arrows(x0 = m_val, y0 = y_top, x1 = m_val, y1 = y_bot,
          col = "blue", lwd = 2, length = 0.08)
-  text(m_val, y_top, sprintf("mean=%.1f", m_val), col = "blue", pos = 3, cex = 0.85)
+  text(m_val, y_top, sprintf("mean=%.1f", m_val), col = "blue", pos = 3, cex = 1.1)
 }
 ```
 

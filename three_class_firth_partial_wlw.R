@@ -229,7 +229,7 @@ add_bayes_boundary <- function() {
 
 ## ---- 9. Visualize: argmax regions for the 3 partial-coupling variants -----
 ## (plus the full 3-term WLW coupling as a reference panel)
-dir <- path.expand("~/ams")
+dir <- path.expand(".")
 class_cols <- c("#e41a1c", "#4daf4a", "#377eb8")   # red, green, blue
 
 plot_argmax <- function(pred_col, title, file_stub) {
