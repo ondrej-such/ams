@@ -20,6 +20,7 @@ author:
     corresponding: true
 notebook-links: false
 bibliography: references.bib
+csl: american-statistical-association.csl
 ---
 
 # Introduction
@@ -48,7 +49,7 @@ is not detected by currently used techniques, yet may have significant repercuss
 
 # Logistic models
 
-A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. The ususal mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a *logistic model* we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability of a context-dependent event by the following formula
+A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. The usual mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a *logistic model* we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability of a context-dependent event by the following formula
 $$
 p(\mathbf{x}) = \sigma(\mathbf{w} \cdot \mathbf{x}),\quad\textrm{where } \sigma(x) = \frac{\exp x}{1 + \exp{x}}.
 $$ {#eq-logistic} 
@@ -490,12 +491,21 @@ for (m in model_order) {
 
 # Applications
 
-Let us describe two applications which could by affected by the phenomenon of multiplicative miscalibration. 
+Let us describe three applications which could by affected by the phenomenon of multiplicative miscalibration. 
 
-The first is out of distribution detection using neural networks. This is a problem when a neural network should detect that its input is something it has never seen before. For instance, an automated driving system should be able detect that something is ahead on the road that it is unable to correctly classify, because it has not seen such object in a training set. A very simple method is
-to threshold the predicted probability--so-called maximum softmax probability method. Studies has shown that this simple method performs very well in practice [@hendrycks2016baseline, @yang2022openood]. If however, a model provided incorrect predictions by several orders of magnitude, the car would require corrective action (stopping or remote assistance) too frequently. 
 
-The second is one-vs-one classification. The models discussed so far are inherently binary. A standard way to extend a binary classifier to $K > 2$ classes is to fit a model on every pair of classes and then *couple* the $\binom{K}{2}$ pairwise probability estimates into a single probability vector over all $K$ classes. We illustrate this with a three-class problem: three bivariate Normal populations with identity covariance ($\mathrm{sd}=1$ in each coordinate) and means forming a right triangle with sides $9$, $12$, $15$ (the $3$-$4$-$5$ triple scaled by $3$), with the right angle at class 1's mean and $150$ points sampled per class. Because the classes have equal priors and identity covariance, the exact Bayes-optimal rule is the nearest-mean classifier, giving us a ground truth to compare against.
+## Risk assessment of low probability events
+
+In financial markets, as well as in insurance industry, it is paramount to
+properly estimate risk. Since one can generally choose to either to buy or to sell a financial instrument (stock, bond, or credit-default swap), an incorrectly set price--both too high or too low---of the instrument provides an opportunity for profiting without taking any risk. The biggest potential payoff is in prediction of very rare events, which typically correspond to highly separable group distributions.  We have seen that multiplicative miscalibration may occur at several orders of magnitude, and thus could provide fabulous returns to a savvy investor if he spots it. Of course, open markets would eventually self-correct and diminish such investment opening. Nevertheless, the first-mover would enjoy a one-in-a-lifetime opportunity.
+
+
+## Partial one-vs-one classification
+
+The models discussed so far are inherently binary. A  common  way to extend a binary classifier to $K > 2$ classes is to fit a model on every pair of classes and then *couple* the $\binom{K}{2}$ pairwise probability estimates into a single probability vector over all $K$ classes [@hastie1998classification]. There have been many proposals of coupling methods, but the one in most common was proposed by Wu--Lin--Weng [@wu2004probability].
+
+
+We illustrate this with a three-class problem: three bivariate Normal populations with identity covariance ($\mathrm{sd}=1$ in each coordinate) and means forming a right triangle with sides $9$, $12$, $15$ (the $3$-$4$-$5$ triple scaled by $3$), with the right angle at class 1's mean and $150$ points sampled per class. Because the classes have equal priors and identity covariance, the exact Bayes-optimal rule is the nearest-mean classifier, giving us a ground truth to compare against.
 
 For every one of the three class pairs we fit two different one-vs-one base classifiers: LDA (closed-form pooled-covariance discriminant) and a Firth (bias-reduced) logistic regression, the latter generalizing the one-dimensional Firth fit used earlier in this paper 
 <!--to a two-dimensional design matrix via the same modified-score IRLS iteration.--> For each base classifier, the three pairwise fits are combined into one three-class probability vector via the fixed-point iteration of Wu, Lin and Weng (2004) — the same algorithm LIBSVM uses to turn one-vs-one SVM outputs into multi-class probabilities [@chang2011libsvm]. We also compute the exact Bayes-optimal classifier from the true generating means for comparison. Full (3-term) WLW coupling recovers the Bayes decision boundaries closely near the training data for both base classifiers, with only small, expected deviations far from all three means, where the pairwise fits are extrapolating.
@@ -665,7 +675,7 @@ layout(matrix(c(1, 1,
 
 par(mar = c(0, 0, 0, 0))
 plot.new()
-legend("center", bty = "n", cex = 1, horiz = TRUE,
+legend("center", bty = "n", cex = 1.4, horiz = TRUE,
        legend = c(paste("class", 1:3), "", "Bayes boundary"),
        col = c(class_cols3, NA, "black"), pch = c(16, 16, 16, NA, NA),
        lty = c(NA, NA, NA, NA, 2), lwd = 2, seg.len = 2, text.width = NA)
@@ -679,3 +689,9 @@ for (dn in names(drops)) {
   plot_argmax_panel(pred_firth, paste0("Firth LR, ", drop_titles[dn]))
 }
 ```
+
+
+## Out-of-distribution-detection
+
+Most neural networks for classification are trained using supervised fashion, meaning one provides a set samples $\mathbf{x}_i$ with labels $y_i$. The labels belong to a discrete set, which we can identify with This is a problem when a neural network should detect that its input is something it has never seen before. For instance, an automated driving system should be able detect that something is ahead on the road that it is unable to correctly classify, because it has not seen such object in a training set. A very simple method is
+to threshold the predicted probability--so-called maximum softmax probability method. Studies has shown that this simple method performs very well in practice [@hendrycks2016baseline, @yang2022openood]. If however, a model provided incorrect predictions by several orders of magnitude, the car would require corrective action (stopping or remote assistance) too frequently. 
