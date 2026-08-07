@@ -51,7 +51,7 @@ is not detected by currently used techniques, yet may have significant repercuss
 
 # Logistic models
 
-A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. The usual mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a *logistic model* we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability of a context-dependent event by the following formula
+A model can be viewed as an algorithm, whose input is the context, and the output is the desired probability. The usual mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a *logistic model* we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability of a context-dependent event by the following formula
 $$
 P(event \mid \mathbf{x}) = \sigma(\mathbf{w} \cdot \mathbf{x}),\quad\textrm{where } \sigma(x) = \frac{\exp x}{1 + \exp{x}}.
 $$ {#eq-logistic} 
@@ -208,12 +208,12 @@ legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression"),
 
 Interestingly, we cannot carry out the comparison for virginica and setosa samples because the fitting procedure for logistic regression will not converge. Let us explain the reason. Logistic regression model is fitted by maximizing the likelihood on the dataset with features $\mathbf{x_i}$ and provided labels $y_i$. In our case $$
 \overbrace{L(w, b)}^{\textrm{likelihood function}} = \prod_i \left\{ \sigma(wx_i + b)\ \ \ \ \mathrm{ when  }\ y_i = virginica \atop 1 - \sigma(wx_i + b)\ \mathrm{ when  }\ y_i = versicolor \right\}.
-$$ The key fact that the ranges of petal width do not intersect (the data is linearly separable), as seen from summary statistics for each species shown in @tbl-petalwidth. For any $\lambda > 0$ we have $$
+$$ The key fact is that the ranges of petal width do not intersect (the data is linearly separable), as seen from summary statistics for each species shown in @tbl-petalwidth. For any $\lambda > 0$ we have $$
 \begin{aligned}
 \lambda (x_i - 1) > 0 \quad y_i = virginica\\
 \lambda (x_i - 1) < 0 \quad y_i = setosa
 \end{aligned}
-$$ {#eq-logistic3} Thus if we choose $w = \lambda$ and $b = -\lambda$ and let $\lambda \rightarrow \infty$, we see that $L(w, b)$ will approach 1 arbitrarily close. However it will never exactly one, since for any $x$ the logistic function $\sigma(x) < 1$.
+$$ {#eq-logistic3} Thus if we choose $w = \lambda$ and $b = -\lambda$ and let $\lambda \rightarrow \infty$, we see that $L(w, b)$ will approach 1 arbitrarily close. However it will never be exactly one, since for any $x$ the logistic function $\sigma(x) < 1$.
 
 <!-- @tbl-petalwidth shows the range (minimum and maximum) of petal width for each of the three species. -->
 
@@ -252,7 +252,7 @@ knitr::kable(petal_width_tab, digits = 2, row.names = FALSE, escape = FALSE,
 
 <!-- This argument would not work for logistic regression, since the objective, the expected likelihood $L(\mathbf{w}, b)$ is *not* invariant to rescaling the model's coefficients. -->
 
-An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on class conditional densities,  if we take enough samples, the ranges *will* intersect. The probability of the intersection can be computed exactly using order statistics. Suppose we draw $n$ samples per class, and let $F_s$, and $F_v$, $f_v$ denote the distribution functions of the two classes and the density of the second class. The setosa range $[\min_i X_i, \max_i X_i]$ fails to intersect the virginica range precisely when $\max_i X_i < \min_j Y_j$ (the reverse ordering has negligible probability, as setosa's mean lies far below virginica's). Conditioning on the position of the minimum $\min_j Y_j$, whose density is $n\,(1-F_v(t))^{n-1} f_v(t)$, and using independence of the two samples, $$
+An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on class conditional densities,  if we take enough samples, the ranges *will* intersect. The probability of the intersection can be computed exactly using order statistics. Suppose we draw $n$ samples per class, and let $F_s$, $F_v$, and $f_v$ denote the distribution functions of the two classes and the density of the second class. The setosa range $[\min_i X_i, \max_i X_i]$ fails to intersect the virginica range precisely when $\max_i X_i < \min_j Y_j$ (the reverse ordering has negligible probability, as setosa's mean lies far below virginica's). Conditioning on the position of the minimum $\min_j Y_j$, whose density is $n\,(1-F_v(t))^{n-1} f_v(t)$, and using independence of the two samples, $$
 P\left(\max_i X_i < \min_j Y_j\right) = \int_{-\infty}^{\infty} F_s(t)^n \; n\,\bigl(1-F_v(t)\bigr)^{n-1} f_v(t)\, dt.
 $$ Evaluating this integral numerically with the plug-in parameters from @tbl-petalwidth (setosa: $\mu = 0.25$, $\sigma = 0.11$; virginica: $\mu = 2.03$, $\sigma = 0.27$) and solving for the sample size at which it drops to $1/2$ shows that one would need $n \approx 464\,000$ samples *per class* before the ranges have at least a 50% chance to intersect. The intuition for this enormous number is that the two means are more than six pooled standard deviations apart, so an intersection requires a joint extreme-tail event. Another modelling method is needed. We will introduce several alternatives in the next section.
 
