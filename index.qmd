@@ -32,7 +32,7 @@ In practical applications, however, the question to quantify probability is ofte
 
 There is a multitude of ways to build different models, and thus one may ask how to compare their quality. Non-probabilistic ways of comparison use the $2\times 2$ contingency matrix with rows and columns corresponding to predictions (probability > 0.5) and observed outcomes. One can use any number of metrics for comparison starting from accuracy (ratio of the sum diagonal entries to that of the whole matrix), through precision and recall to Matthews correlation coefficient [@yule1912methods; @chicco2021matthews]. However, this approach disregards much of the probabilistic information.
 
-Historically, the question of measuring quality of probabilistic predictions arose in the context of weather forecasting. Since early 20th century weather forecasts are typically  probabilistic. A simple check of how good a weather forecasters (or more precisely their models) are, is to compare their predictions with climate observations. *Climate* is obtained by computing the expected event frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be close.
+Historically, the question of how to measure the quality of probabilistic predictions arose in the context of weather forecasting [@glenn1950verification]. First probabilistic forecasts appeared in the early 20th century [@hallenbeck1920forecasting] and became routine since the 1960's [@murphy1984probability]. A simple check of how good weather forecasters (or more precisely their models) are, is to compare their predictions with climate observations. *Climate* is obtained by computing the expected event frequency over long-term (one or more years). If the probability of rain on any given day in a year is 40%, we can compare that with the average probability that was provided by the forecaster throughout the whole year. For a good forecaster, they should be close.
 
 There is an even finer method to compare forecast's fidelity. We can subdivide the probability interval $[0,1]$ into (nonintersecting) subintervals. For each subinterval, we compare the observed frequency of rain on days when the forecast fell into it [@zadrozny2001obtaining]. Suppose for instance that one of the subintervals was $I_m = [0.45, 0.55]$. We would expect that the probability $p$ of rain on days when forecast fell into $I_m$ would be around 0.5 A model that matches this expectation reasonably well is said to be *well-calibrated*. Calibration is typically judged visually by preparing a reliability diagram. or by computing a score such as expected calibration error.
 
@@ -51,7 +51,7 @@ is not detected by currently used techniques, yet may have significant repercuss
 
 A model can viewed as an algorithm, whose input is the context, and the output is the desired probability. The usual mathematical representation of context is a vector. It maybe called vector of features, if features were handpicked, or the embedding vector, if the vector is produced by a neural network. By a *logistic model* we mean an algorithm that for a given context vector $\mathbf{x}$ outputs the probability of a context-dependent event by the following formula
 $$
-p(\mathbf{x}) = \sigma(\mathbf{w} \cdot \mathbf{x}),\quad\textrm{where } \sigma(x) = \frac{\exp x}{1 + \exp{x}}.
+P(event \mid \mathbf{x}) = \sigma(\mathbf{w} \cdot \mathbf{x}),\quad\textrm{where } \sigma(x) = \frac{\exp x}{1 + \exp{x}}.
 $$ {#eq-logistic} 
 Note that  the model allows predicting probabilities in the whole range $(0,1)$ since $$
 \begin{aligned}
@@ -62,9 +62,9 @@ $$ {#eq-logistic2}
 
 The two principal examples of logistic models are linear discriminant analysis (LDA) and logistic regression [@james2021introduction]. They both yield prediction in the form @eq-logistic, but they differ in their parameters, as well as in the methods to estimate them. Although logistic regression is more commonly used,  they are considered to give approximately the same results. We can illustrate it on the famous iris dataset. The iris dataset was created in 1930's by Edgar Anderson, an American botanist. It contains four measurements (features) of three iris species
 
--   iris versicolor L. (L. indicates it was named by famous Swedish biologist Carl Linnaeus),
--   iris virginica L.,
--   iris setosa.
+-   *Iris versicolor L.* (L. indicates it was named by famous Swedish biologist Carl Linnaeus),
+-   *Iris virginica L.*,
+-   *Iris setosa*.
 
 From statistical point of view the important property of the dataset is that the features are approximately normally distributed. We can check this for one of the measurements (the width of petal) with normal quantile-quantile plots, shown in @fig-qq: for both versicolor and virginica the points fall close to the reference line, indicating approximate normality. 
 
