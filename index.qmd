@@ -21,6 +21,8 @@ author:
 notebook-links: false
 bibliography: references.bib
 csl: american-statistical-association.csl
+abstract: |
+  Calibration is an important property of probabilistic models. It measures the match between predicted probability in a given range and the observed frequency. We study the behavior of linear discriminant analysis (LDA) and commonly used variants of the logistic model in the case of large group separation. When the groups follow homoscedastic normal distribution, the Bayes classifier is well approximated by LDA. All models generally agree on the boundary between classes. However, logistic regression variants consistently overestimate the true probability---a behavior we call multiplicative miscalibration. Currently used miscalibration detection techniques are not well suited to uncover this phenomonen. The odds between true probabilities and predicted probabilities may differ by several orders of magnitude even for commonly encountered effect sizes. We outline several practical applications in finance and multiclass classification, where multiplicative miscalibration could pose severe problems.
 ---
 
 # Introduction
@@ -497,7 +499,7 @@ Let us describe three applications which could by affected by the phenomenon of 
 ## Risk assessment of low probability events
 
 In financial markets, as well as in insurance industry, it is paramount to
-properly estimate risk. Since one can generally choose to either to buy or to sell a financial instrument (stock, bond, or credit-default swap), an incorrectly set price--both too high or too low---of the instrument provides an opportunity for profiting without taking any risk. The biggest potential payoff is in prediction of very rare events, which typically correspond to highly separable group distributions.  We have seen that multiplicative miscalibration may occur at several orders of magnitude, and thus could provide fabulous returns to a savvy investor if he spots it. Of course, open markets would eventually self-correct and diminish such investment opening. Nevertheless, the first-mover would enjoy a one-in-a-lifetime opportunity.
+properly estimate risk. Since one can generally choose to either to buy or to sell a financial instrument (stock, bond, or credit-default swap), an incorrectly set price--both too high or too low---of the instrument provides an opportunity for profiting without taking any risk. The biggest potential payoff is in prediction of very rare events, which typically correspond to highly separable group distributions.  Logistic regression is widely used to estimate risk of rare events [@ogundimu2019prediction]. We have seen that multiplicative miscalibration may occur at several orders of magnitude, and thus could provide fabulous returns to a savvy investor if he spots it. Of course, open markets would eventually self-correct and diminish such investment opening. Nevertheless, the first-mover would enjoy a one-in-a-lifetime opportunity.
 
 
 ## Partial one-vs-one classification
