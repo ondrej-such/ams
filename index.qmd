@@ -22,7 +22,7 @@ notebook-links: false
 bibliography: references.bib
 csl: american-statistical-association.csl
 abstract: |
-  Calibration is an important property of probabilistic models. It measures the match between predicted probability in a given range and the observed frequency. We study the behavior of linear discriminant analysis (LDA) and commonly used variants of the logistic model in the case of large group separation. When the groups follow homoscedastic normal distribution, the Bayes classifier is well approximated by LDA. All models generally agree on the boundary between classes. However, logistic regression variants consistently overestimate the true probability---a behavior we call multiplicative miscalibration. Currently used miscalibration detection techniques are not well suited to uncover this phenomonen. The odds between true probabilities and predicted probabilities may differ by several orders of magnitude even for commonly encountered effect sizes. We outline several practical applications in finance and multiclass classification, where multiplicative miscalibration could pose severe problems.
+  Calibration is an important property of probabilistic models. It measures the match between predicted probability in a given range and the observed frequency. We study the behavior of linear discriminant analysis (LDA) and commonly used variants of the logistic model in the case of large group separation. When the groups follow homoscedastic normal distribution, the Bayes classifier is well approximated by LDA. All models generally agree on the boundary between classes. However, logistic regression variants consistently overestimate the true probability---a behavior we call multiplicative miscalibration. Currently used miscalibration detection techniques are not well suited to uncover this phenomonen. While the difference between true probabilities and predicted probabilities is minuscule, thei ratio may differ by several orders of magnitude even for commonly encountered effect sizes. We outline several practical applications in finance and multiclass classification, where multiplicative miscalibration could pose severe problems.
 ---
 
 # Introduction
@@ -77,7 +77,7 @@ From statistical point of view the important property of the dataset is that the
 #| echo: false
 #| fig-cap: Normal Q-Q plots of Petal.Width for versicolor and virginica. Points close to the reference line indicate that the class-conditional distribution is approximately normal.
 #| fig-width: 8
-#| fig-height: 4
+#| fig-height: 3.2
 d_qq <- droplevels(subset(iris, Species %in% c("versicolor", "virginica")))
 
 col_versicolor <- "#1b9e77"
@@ -151,7 +151,9 @@ $$ -->
 ```{r }
 #| label: fig-chunk1
 #| echo: false
-#| fig-cap: Comparison of LDA and logistic regression on iris dataset
+#| fig-cap: "Comparison of LDA and logistic regression on the iris dataset. Left: predicted P(virginica | Petal.Width) from both models. Right: reliability diagram of the two models against each other, with the logistic-regression prediction on the horizontal axis and the LDA prediction, taken as the reference frequency, on the vertical axis; the dashed diagonal marks perfect agreement. Grey bars along the bottom show a histogram of the logistic-regression predictions at the actual data points, binned into deciles (ten equal-count, variable-width bins) and scaled to the lower 15% of the panel; bin width therefore reflects the local density of predictions."
+#| fig-width: 8
+#| fig-height: 4
 suppressPackageStartupMessages(library(MASS))
 
 d <- droplevels(subset(iris, Species %in% c("versicolor", "virginica")))
@@ -177,7 +179,7 @@ col_lda   <- "#1b9e77"
 col_glm   <- "#d95f02"
 # col_bayes <- "#7570b3"
 
-par(mar = c(4, 4.5, 3, 1))
+par(mfrow = c(1, 2), mar = c(4, 4.5, 3, 1))
 plot(xg, p_lda, type = "l", lwd = 2, col = col_lda, yaxt = "n",
      xlab = "Petal.Width", ylab = "P(virginica | Petal.Width)",
      main = "", ylim = c(0, 1))
@@ -204,6 +206,42 @@ legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression"),
        col = c(col_lda, col_glm), lwd = 2, lty = c(1, 2))
 # legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression", "Bayes (KDE plug-in)"),
 #        col = c(col_lda, col_glm, col_bayes), lwd = 2, lty = c(1, 2, 3))
+
+## Right panel: reliability diagram of one model against the other. The
+## logistic-regression prediction plays the role of the forecast (horizontal
+## axis) and the LDA prediction plays the role of the reference ("true")
+## frequency (vertical axis). Both curves are evaluated on the same grid xg,
+## so the curve is the parametric plot x -> (p_glm(x), p_lda(x)); a
+## perfectly agreeing pair would lie on the diagonal.
+plot(p_glm, p_lda, type = "l", lwd = 2, col = col_glm,
+     xlim = c(0, 1), ylim = c(0, 1), las = 1,
+     xlab = "Predicted P (logistic regression)",
+     ylab = "Reference P (LDA)")
+abline(0, 1, lty = 2, col = "grey40")
+
+## Decile histogram of the logistic-regression prediction, integrated into
+## the same panel as short bars along the bottom rather than as a separate
+## plot. Evaluated at the actual n = 100 data points (not the grid xg used
+## for the curves above), since the histogram should reflect the real
+## predictor distribution. Breaks are placed at the deciles of p_glm_data,
+## so every bin holds the same number of points (~10) but bins vary in
+## width -- narrow bins mark probability ranges where predictions are
+## dense, wide bins mark ranges where they are sparse, communicating
+## density through bin width rather than bin height. Bar heights are
+## rescaled to occupy only the bottom 15% of the [0, 1] panel so the
+## histogram reads as a density strip and does not compete visually with
+## the calibration curve and diagonal above it.
+p_glm_data <- predict(glm_fit, type = "response")
+decile_breaks <- unique(quantile(p_glm_data, probs = seq(0, 1, by = 0.1)))
+decile_breaks[1] <- 0; decile_breaks[length(decile_breaks)] <- 1
+
+h <- hist(p_glm_data, breaks = decile_breaks, plot = FALSE)
+strip_top <- 0.15   # fraction of the panel height given to the histogram
+bar_heights <- strip_top * h$counts / max(h$counts)
+rect(xleft = head(decile_breaks, -1), ybottom = 0,
+     xright = tail(decile_breaks, -1), ytop = bar_heights,
+     col = adjustcolor("grey50", alpha.f = 0.5), border = "white")
+rug(p_glm_data, col = adjustcolor("grey30", alpha.f = 0.7))
 ```
 
 Interestingly, we cannot carry out the comparison for virginica and setosa samples because the fitting procedure for logistic regression will not converge. Let us explain the reason. Logistic regression model is fitted by maximizing the likelihood on the dataset with features $\mathbf{x_i}$ and provided labels $y_i$. In our case $$
@@ -254,7 +292,7 @@ knitr::kable(petal_width_tab, digits = 2, row.names = FALSE, escape = FALSE,
 
 An observant reader may point out that we just need more samples. Indeed, Gaussian distribution has infinite support and thus under Gaussian assumption on class conditional densities,  if we take enough samples, the ranges *will* intersect. The probability of the intersection can be computed exactly using order statistics. Suppose we draw $n$ samples per class, and let $F_s$, and $F_v$, $f_v$ denote the distribution functions of the two classes and the density of the second class. The setosa range $[\min_i X_i, \max_i X_i]$ fails to intersect the virginica range precisely when $\max_i X_i < \min_j Y_j$ (the reverse ordering has negligible probability, as setosa's mean lies far below virginica's). Conditioning on the position of the minimum $\min_j Y_j$, whose density is $n\,(1-F_v(t))^{n-1} f_v(t)$, and using independence of the two samples, $$
 P\left(\max_i X_i < \min_j Y_j\right) = \int_{-\infty}^{\infty} F_s(t)^n \; n\,\bigl(1-F_v(t)\bigr)^{n-1} f_v(t)\, dt.
-$$ Evaluating this integral numerically with the plug-in parameters from @tbl-petalwidth (setosa: $\mu = 0.25$, $\sigma = 0.11$; virginica: $\mu = 2.03$, $\sigma = 0.27$) and solving for the sample size at which it drops to $1/2$ shows that one would need $n \approx 464\,000$ samples *per class* before the ranges have at least a 50% chance to intersect. The intuition for this enormous number is that the two means are more than six pooled standard deviations apart, so an intersection requires a joint extreme-tail event. Another modelling method is needed. We will introduce several alternatives in the next section.
+$$ Evaluating this integral numerically with the plug-in parameters from @tbl-petalwidth (setosa: $\mu = 0.25$, $\sigma = 0.11$; virginica: $\mu = 2.03$, $\sigma = 0.27$) and solving for the sample size at which it drops to $1/2$ shows that one would need $n \approx 464\,000$ samples *per class* before the ranges have at least a 50% chance to intersect. The intuition for this enormous number is that the two means are more than six pooled standard deviations apart, so an intersection requires a joint extreme-tail event. Another modelling method is needed. We will introduce several alternatives next.
 
 # Regularization of logistic regression
 
@@ -490,6 +528,8 @@ for (m in model_order) {
   text(m_val, y_top, sprintf("mean=%.1f", m_val), col = "blue", pos = 3, cex = 1.4)
 }
 ```
+
+![Multiplicative miscalibration of Firth logistic regression as a function of class separation. For each Cohen's *d* between 1 and 8, 30 datasets of 50 samples per class were drawn from N(0,1) and N(*d*,1), and the predicted probability of the less likely class was evaluated at the mode of class A (*x* = 0). The purple curve shows the mean of log10(predicted probability / true probability) with a ±1 sd band; the dashed red line marks perfect calibration. The top axis gives the true odds ratio per 1 SD of *x* corresponding to each *d*, and the right axis (log scale) shows the true OR = exp(*d*) (dotted black) alongside the mean Firth-fitted OR (green). Miscalibration is negligible up to *d* ≈ 3.5 and takes off where samples of this size become frequently linearly separable; past that threshold the fitted OR flattens and declines while the true OR keeps growing, so the two curves are complementary views of the same information loss.](firth_dscan.png){#fig-firth-dscan}
 
 # Applications
 
