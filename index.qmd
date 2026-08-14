@@ -151,7 +151,7 @@ $$ -->
 ```{r }
 #| label: fig-chunk1
 #| echo: false
-#| fig-cap: "Comparison of LDA and logistic regression on the iris dataset. Left: predicted P(virginica | Petal.Width) from both models. Right: reliability diagram, with the logistic-regression prediction on the horizontal axis and the LDA prediction, taken as the true probability, on the vertical axis; the dashed diagonal marks perfect agreement."
+#| fig-cap: "Comparison of LDA and logistic regression on discrimination of *Iris virginica* from *Iris versicolor*"
 #| fig-width: 8
 #| fig-height: 4
 suppressPackageStartupMessages(library(MASS))
@@ -182,7 +182,7 @@ col_glm   <- "#d95f02"
 par(mfrow = c(1, 2), mar = c(4, 4.5, 3, 1))
 plot(xg, p_lda, type = "l", lwd = 2, col = col_lda, yaxt = "n",
      xlab = "Petal.Width", ylab = "P(virginica | Petal.Width)",
-     main = "", ylim = c(0, 1))
+     main = "Predicted probability curves", ylim = c(0, 1))
 lines(xg, p_glm, lwd = 2, lty = 2, col = col_glm)
 # lines(xg, p_bayes, lwd = 2, lty = 3, col = col_bayes)
 
@@ -215,8 +215,17 @@ legend("bottomright", bty = "n", legend = c("LDA", "Logistic regression"),
 plot(p_glm, p_lda, type = "l", lwd = 2, col = col_glm,
      xlim = c(0, 1), ylim = c(0, 1), las = 1,
      xlab = "Predicted P (logistic regression)",
-     ylab = "True P (LDA)")
+     ylab = "True P (LDA)", main = "Reliability diagram")
 abline(0, 1, lty = 2, col = "grey40")
+
+## Same maximal gap as in the left panel (same index i_max into xg), shown
+## here as the vertical distance from the curve to the diagonal at
+## x = p_glm[i_max] -- i.e. from (p_glm[i_max], p_glm[i_max]) on the
+## diagonal up to (p_glm[i_max], p_lda[i_max]) on the curve.
+x0 <- p_glm[i_max]
+arrows(x0 = x0, y0 = x0, x1 = x0, y1 = p_lda[i_max],
+       code = 3, angle = 90, length = 0.05, lwd = 1.5, col = "black")
+text(x0, (x0 + p_lda[i_max]) / 2, sprintf("max gap = %.2f", gap[i_max]), pos = 4, cex = 0.85)
 ```
 
 Interestingly, we cannot carry out the comparison for virginica and setosa samples because the fitting procedure for logistic regression will not converge. Let us explain the reason. Logistic regression model is fitted by maximizing the likelihood on the dataset with features $\mathbf{x_i}$ and provided labels $y_i$. In our case $$
