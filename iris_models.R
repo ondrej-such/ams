@@ -91,7 +91,7 @@ draw_one <- function(v) {
          lwd = 2, lty = models$lty, cex = 0.8)
 }
 
-dir <- path.expand("~/ams")
+dir <- getwd()  # write into the project directory (where this script is run from)
 files <- setNames(
   file.path(dir, paste0("iris_", pair, "_", tolower(vars), ".png")), vars)
 

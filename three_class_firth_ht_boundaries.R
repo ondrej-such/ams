@@ -206,7 +206,7 @@ add_boundary <- function(pred, col, lty, lwd = 2) {
 }
 
 ## ---- 9. Plot ---------------------------------------------------------------
-dir <- path.expand("~/ams")
+dir <- getwd()  # write into the project directory (where this script is run from)
 class_cols <- c("#e41a1c", "#4daf4a", "#377eb8")   # red, green, blue
 col_ht  <- "#d95f02"
 col_wlw <- "#7570b3"

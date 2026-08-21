@@ -105,7 +105,7 @@ plot_diagnostics <- function(res, geom_name, tag) {
              by = c("rep", "point_id"), suffixes = c(".lo", ".hi"))
   dif <- m$log10_ratio.hi - m$log10_ratio.lo
 
-  out_png <- path.expand(sprintf("~/ams/three_class_multinom_maxit_%s_diagnostics.png", tag))
+  out_png <- file.path(getwd(), sprintf("three_class_multinom_maxit_%s_diagnostics.png", tag))
   png(out_png, width = 10, height = 8.5, units = "in", res = 150)
   par(mfrow = c(2, 2), mar = c(4.5, 4.5, 3.5, 1), oma = c(0, 0, 3, 0))
 
@@ -186,12 +186,12 @@ run_geometry <- function(geom_name, geom) {
   cat("\n(If these tables change down the maxit rows, the calibration being\n")
   cat(" measured is a property of the optimizer cap, not of the model.)\n")
 
-  out_csv <- path.expand(sprintf("~/ams/three_class_multinom_maxit_%s.csv", geom$tag))
+  out_csv <- file.path(getwd(), sprintf("three_class_multinom_maxit_%s.csv", geom$tag))
   write.csv(res, out_csv, row.names = FALSE)
   cat("Wrote", out_csv, "\n")
 
   ## ---- Plot: maxit rows x class columns -----------------------------------
-  out_png <- path.expand(sprintf("~/ams/three_class_multinom_maxit_%s.png", geom$tag))
+  out_png <- file.path(getwd(), sprintf("three_class_multinom_maxit_%s.png", geom$tag))
   png(out_png, width = 10, height = 8.5, units = "in", res = 150)
   par(mfrow = c(length(maxit_grid), K), mar = c(4, 4, 3, 1), oma = c(0, 0, 3, 0))
   for (mi in maxit_grid) {

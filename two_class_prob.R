@@ -120,7 +120,7 @@ draw <- function() {
          col = models$col, lwd = 2, lty = models$lty, cex = 0.85)
 }
 
-dir <- path.expand("~/ams")
+dir <- getwd()  # write into the project directory (where this script is run from)
 
 pdf_out <- file.path(dir, "two_class_prob.pdf")
 pdf(pdf_out, width = 7, height = 5); draw(); invisible(dev.off())

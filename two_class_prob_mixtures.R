@@ -112,7 +112,7 @@ fit_and_plot <- function(x1, x2, dA, dB, family_label, file_stub) {
            col = models$col, lwd = 2, lty = models$lty, cex = 0.85)
   }
 
-  dir <- path.expand("~/ams")
+  dir <- getwd()  # write into the project directory (where this script is run from)
   pdf_out <- file.path(dir, paste0(file_stub, ".pdf"))
   pdf(pdf_out, width = 7, height = 5); draw(); invisible(dev.off())
   cat("Wrote", pdf_out, "\n")
@@ -158,7 +158,7 @@ draw_normal <- fit_and_plot(
 )
 
 ## ---- Combined multi-page PDF (one family per page) ----------------------
-combined_pdf <- file.path(path.expand("~/ams"), "two_class_prob_mixtures_all.pdf")
+combined_pdf <- file.path(getwd(), "two_class_prob_mixtures_all.pdf")
 pdf(combined_pdf, width = 7, height = 5)
 draw_cauchy(); draw_t(); draw_normal()
 invisible(dev.off())

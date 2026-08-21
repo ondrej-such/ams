@@ -67,7 +67,7 @@ res <- do.call(rbind, lapply(d_grid, function(d) {
              true_log10_or    = d / ln10)
 }))
 
-out_dir <- path.expand("~/ams")
+out_dir <- getwd()  # write into the project directory (where this script is run from)
 write.csv(res, file.path(out_dir, "firth_dscan.csv"), row.names = FALSE)
 
 png(file.path(out_dir, "firth_dscan.png"),

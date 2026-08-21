@@ -1,0 +1,23 @@
+project:
+  type: manuscript
+
+manuscript:
+  article: index.qmd
+
+format:
+  html:
+    comments:
+      hypothesis: true
+  docx: default
+  jats: default
+
+  pdf:
+    include-in-header:
+      text: |
+        \usepackage{tikz}
+
+execute:
+  freeze: true
+
+editor: visual
+

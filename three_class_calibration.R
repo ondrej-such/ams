@@ -273,12 +273,12 @@ run_geometry <- function(geom_name, geom) {
   cat("\n(0 = matches Bayes; negative = less mass on the correct class than Bayes.\n")
   cat(" Values at the 1e-16 level are double-precision round-off, not signal.)\n")
 
-  out_csv <- path.expand(sprintf("~/ams/three_class_calibration_%s.csv", geom$tag))
+  out_csv <- file.path(getwd(), sprintf("three_class_calibration_%s.csv", geom$tag))
   write.csv(results, out_csv, row.names = FALSE)
   cat("Wrote", out_csv, "\n")
 
   ## ---- Plot: 4 models x 3 classes -----------------------------------------
-  out_png <- path.expand(sprintf("~/ams/three_class_calibration_hists_%s.png", geom$tag))
+  out_png <- file.path(getwd(), sprintf("three_class_calibration_hists_%s.png", geom$tag))
   png(out_png, width = 10, height = 11, units = "in", res = 150)
   par(mfrow = c(4, 3), mar = c(4, 4, 3, 1), oma = c(0, 0, 2.5, 0))
   for (m in model_order) {
