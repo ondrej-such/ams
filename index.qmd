@@ -942,6 +942,37 @@ boxplot(miscal[["1_2"]], miscal[["1_3"]], miscal[["2_3"]],
 abline(h = 0, col = "red", lwd = 2, lty = 2)
 ```
 
+```{r}
+#| label: ratio-decomposition
+#| echo: false
+#| warning: false
+#| message: false
+
+idx_M <- as.integer(test3$class) == 2
+X_M   <- as.matrix(test3[idx_M, c("x", "y")])
+pred_dropAM <- max.col(couple_predict_partial(X_M, i = 1, j = 2, k = 3, firth_log_odds))
+X_bad <- X_M[pred_dropAM == 1, , drop = FALSE]   # true M, predicted A by drop-(A,M) coupling
+
+## p(S) as reported by the A-S classifier (Firth vs. LDA reference)
+p_S_AS_firth <- pmax(plogis(firth_eta_pair_raw(1, 3, X_bad)), 1e-300)
+p_S_AS_lda   <- pmax(plogis(lda_eta_pair_raw(1, 3, X_bad)),   1e-300)
+mis_AS <- median(log10(p_S_AS_firth) - log10(p_S_AS_lda))
+
+## p(S) as reported by the M-S classifier (Firth vs. LDA reference)
+p_S_MS_firth <- pmax(plogis(firth_eta_pair_raw(2, 3, X_bad)), 1e-300)
+p_S_MS_lda   <- pmax(plogis(lda_eta_pair_raw(2, 3, X_bad)),   1e-300)
+mis_MS <- median(log10(p_S_MS_firth) - log10(p_S_MS_lda))
+```
+
+Consider the `r sum(pred_dropAM == 1)` held-out M test points that the drop-$(A,M)$ coupling in @fig-partial-coupling misclassifies as A. By dropping the A-M classifier, the odds ratio $p(A)/p(M)$ between classes A and M can only be recovered by routing through class S:
+
+$$
+\frac{p(A)}{p(M)} = \frac{p(A)}{p(S)} \cdot \frac{p(S)}{p(M)}
+$$ {#eq-ratio3}
+
+so the coupled prediction depends on how well the A-S and M-S classifiers each estimate $p(S)$. For these points, both classifiers inflate $p(S)$ relative to the LDA reference, but by very different amounts: the median $\log_{10}(p_{\mathrm{Firth}}/p_{\mathrm{LDA}})$ is $6.05$ for A-S versus $15.65$ for M-S, a difference of nearly `r round(mis_MS - mis_AS, 1)` orders of magnitude. Had the two classifiers been equally miscalibrated, their errors would cancel in @eq-ratio3 and the coupled prediction would still be correct. Instead, the M-S classifier's far larger overestimate of $p(S)$ pulls $p(M)$ down more than the A-S classifier's smaller overestimate pulls $p(A)$ down, so class A ends up with the higher coupled probability even though the true speaker is M.
+
+As @fig-firth-dscan shows, miscalibration increases with Cohen's $d$; since the A-S and M-S pairs differ in Cohen's $d$ (@fig-miscal-box), they are affected unequally — which is exactly the asymmetry driving the misclassification.
 
 ## Out-of-distribution-detection
 
