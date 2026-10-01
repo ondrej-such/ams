@@ -1,0 +1,7 @@
+# Python packages for prepare_embeddings.py (speaker embeddings for index.qmd).
+# index.qmd installs these automatically into a local .venv on first render.
+torch==2.8.*
+torchaudio==2.8.*
+speechbrain==1.1.*
+soundfile>=0.12
+numpy

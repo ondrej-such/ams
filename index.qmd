@@ -88,6 +88,8 @@ qqnorm(pw_virginica, col = col_virginica, pch = 19,
        main = "virginica", xlab = "Theoretical quantiles",
        ylab = "Petal.Width")
 qqline(pw_virginica, col = col_virginica, lwd = 2)
+
+
 ```
 
 ```{r}
@@ -503,245 +505,52 @@ In financial markets, as well as in insurance industry, it is paramount to prope
 
 ## Partial one-vs-one classification
 
-The models discussed so far are inherently binary. A common way to extend a binary classifier to $K > 2$ classes is to fit a model on every pair of classes and then *couple* the $\binom{K}{2}$ pairwise probability estimates into a single probability vector over all $K$ classes [@hastie1998classification]. There have been many proposals of coupling methods, but the one in most common was proposed by Wu--Lin--Weng [@wu2004probability].
-
-<!--We illustrate this with a three-class problem: three bivariate Normal populations with identity covariance ($\mathrm{sd}=1$ in each coordinate) and means forming a right triangle with sides $9$, $12$, $15$ (the $3$-$4$-$5$ triple scaled by $3$), with the right angle at class 1's mean and $150$ points sampled per class. Because the classes have equal priors and identity covariance, the exact Bayes-optimal rule is the nearest-mean classifier, giving us a ground truth to compare against.-->
-We empirically evaluate the pairwise coupling framework using a three-class ($K = 3$) speaker recognition task. The dataset includes speech audio from three speakers ($A$, $M$, and $S$) reciting “The North Wind and the Sun” in English and Urdu. The process of converting raw recordings into classifier ready inputs follows a short pipeline. First, the audio is resampled to 16kHz. An energy-based voice-activity detection method retains only segments that are predominantly speech, removing silence and background noise. The resulting audio is segmented into non overlapping $500ms$ clips. Each clip is then processed by a pretrained speaker-embedding neural network, ECAPA-TDNN [@desplanques2020ecapa], which compresses the clip into a 192-dimensional vector that summarizes speaker identity, independent of spoken content. Each embedding is subsequently re-scaled to unit $L_2$ norm.  To assess generalization under cross-lingual distribution shift, training is performed on the English recordings ($N_{\text{train}} = 201$ segments, 67 per speaker), and testing is conducted on the Urdu recordings of the same three speakers ($N_{\text{test}} = 195$ segments, 65 per speaker).
-
-In order to reduce the $192$-dimensional embedding space to $K-1=2$ canonical discriminant directions, we use regularized linear discriminant analysis [@friedman1989regularized]. Since the sample sizes ($N_{\text{train}} = 201$, $N_{\text{test}} = 195$) are only just greater than the number of features ($p = 192$), the empirical pooled within-class covariance matrix is near-singular. To overcome the ill-conditioning we apply linear covariance shrinkage with a shrinkage intensity of $\gamma = 0.5$. In the resulting 2D whitened projection, the training data’s pooled within-class covariance matrix is sphered as a result of the fact that the projection was fitted on the training set and then used for the test data. The reduced-dimensional data have the following properties:
-
-1. Each class follows a bivariate normal distribution with a shared covariance matrix. Royston’s multivariate Shapiro–Wilk test [@royston1983some] indicates no significant deviation from normality, and Box’s $M$ test [@friendly2020visualizing] fails to reject the null hypothesis of equal class covariances.
-2. Under homoscedastic bivariate normal distribution, the nearest-sample-mean rule constitutes the exact plug-in Bayes-optimal decision boundary— the dashed line overlaid in @fig-partial-coupling below.
-3. All class pairs are perfectly linearly separable. The standardized mean differences (Cohen’s $d$) for pairs ($A-M$, $A-S$, $M-S$) are $7.07$, $8.29$, and $9.20$ for English, and $5.92$, $6.85$, and $8.26$ for Urdu.
-
-
-
-To evaluate model generalization under this cross-lingual domain shift for each pair of classes, we fit two different one-vs-one base classifiers: LDA (closed-form pooled-covariance discriminant) and a Firth (bias-reduced) logistic regression, the latter generalizing the one-dimensional Firth fit used earlier in this paper <!--to a two-dimensional design matrix via the same modified-score IRLS iteration.--> For each base classifier, the three pairwise fits are combined into one three-class probability vector via the fixed-point iteration of Wu, Lin and Weng (2004) — the same algorithm LIBSVM uses to turn one-vs-one SVM outputs into multi-class probabilities [@chang2011libsvm]. Full (3-term) WLW coupling recovers the Bayes decision boundaries closely near the training data for both base classifiers, with only small, expected deviations far from all three means, where the pairwise fits are extrapolating.
-
-Wu-Lin-Weng coupling finds the probability vector $p$ minimizing $L(p) = \sum_{i<j}(r_{ji}\,p_i - r_{ij}\,p_j)^2$, a sum over all $\binom{3}{2}=3$ pairwise terms.
-
-```{=html}
-<!--To see how much any single pairwise comparison actually contributes to the final decision regions, we drop one term entirely from the objective — the corresponding pairwise fit is still computed but never enters the coupling step — giving three "partial coupling" variants, one for each pair that can be dropped.
--->
-```
-
-With only three classes, dropping pair $(i,j)$ leaves exactly two terms in the objective, for pairs $(i,k)$ and $(j,k)$ with $k$ the remaining class. These two terms are independent of each other (neither involves both $p_i$ and $p_j$), so both can be driven to exactly zero at once: $r_{ki}\,p_i = r_{ik}\,p_k$ and $r_{kj}\,p_j = r_{jk}\,p_k$. This pins down the class ratios directly from the two kept pairwise odds, $p_i:p_j:p_k = \frac{r_{ik}}{r_{ki}} : \frac{r_{jk}}{r_{kj}} : 1$, with no optimization needed at all — unlike the full three-term objective, which generally has no exact solution and does need the fixed-point iteration. We evaluate this ratio from each pairwise classifier's raw log-odds rather than from its probability output: with class means $7.07$ – $9.20$ units apart, a pairwise probability routinely saturates to exactly $0$ or $1$ in floating point (any log-odds beyond $36.74$ rounds a double-precision probability to $1.0$ exactly), which would silently discard precisely the information needed to tell $i$ and $j$ apart far from class $K$ — namely, the difference between two individually-huge log-odds, which stays well-behaved even once each one on its own has long since saturated a probability. 
-
-
-<!--We evaluate this ratio from each pairwise classifier's raw log-odds rather than from its probability output: with class means 9–15 units apart, a pairwise probability routinely saturates to exactly $0$ or $1$ in floating point (any log-odds beyond about $37$ rounds a double-precision probability to $1.0$ exactly), which would silently discard precisely the information needed to tell $i$ and $j$ apart far from class $k$ — namely, the *difference* between two individually-huge log-odds, which stays well-behaved even once each one on its own has long since saturated a probability.-->
-
-@fig-partial-coupling shows the argmax regions for all three partial-coupling variants (rows) using LDA (left column) and Firth logistic regression (right column) as the one-vs-one base classifier. Dropping the pair $(i,j)$ predictably degrades the boundary specifically between classes $i$ and $j$ (since the coupling step no longer sees that pairwise comparison directly, only indirectly through their shared comparisons with class $k$), while leaving the region boundaries involving the third class comparatively unaffected. The two base classifiers differ sharply in how much damage this causes, however: LDA's decision regions move slightly under all three pair removals, while Firth's have a large shift under each removal and collapse dramatically for one specific dropped pair—dropping $(A, M)$ reduces Firth's held-out accuracy from $0.94$ to $0.62$.
-
-<!--```{r}
-#| label: fig-partial-coupling
-#| echo: false
-#| fig-cap: Argmax decision regions under partial (2-term) Wu-Lin-Weng coupling on the three-class speakers dataset, dropping one pairwise term at a time (rows), for LDA (left column) and Firth logistic regression (right column) as the one-vs-one base classifier. The Bayes boundary is overlaid (dashed).
-#| fig-width: 7.5
-#| fig-height: 10.5
-set.seed(1)
-
-## Class means: right triangle with sides 9, 12, 15 (right angle at class 1).
-mu1 <- c(0, 0); mu2 <- c(9, 0); mu3 <- c(0, 12)
-means3 <- rbind(mu1, mu2, mu3)
-
-n3 <- 150
-sample_class3 <- function(mu, n) cbind(x = rnorm(n, mu[1], 1), y = rnorm(n, mu[2], 1))
-X1 <- sample_class3(mu1, n3); X2 <- sample_class3(mu2, n3); X3 <- sample_class3(mu3, n3)
-dat3 <- data.frame(x = c(X1[, 1], X2[, 1], X3[, 1]),
-                    y = c(X1[, 2], X2[, 2], X3[, 2]),
-                    class = factor(rep(1:3, each = n3)))
-
-pairs3 <- combn(3, 2, simplify = FALSE)   # (1,2) (1,3) (2,3)
-
-## LDA pairwise fits: closed-form pooled-covariance discriminant, evaluated
-## as a raw linear score (not via predict.lda) so it stays informative at
-## full precision far from the training data.
-lda_pair_coef <- list()
-for (pr in pairs3) {
-  lo <- pr[1]; hi <- pr[2]
-  Xlo <- as.matrix(dat3[dat3$class == lo, c("x", "y")])
-  Xhi <- as.matrix(dat3[dat3$class == hi, c("x", "y")])
-  n_lo <- nrow(Xlo); n_hi <- nrow(Xhi)
-  mlo <- colMeans(Xlo); mhi <- colMeans(Xhi)
-  Sigma <- ((n_lo - 1) * cov(Xlo) + (n_hi - 1) * cov(Xhi)) / (n_lo + n_hi - 2)
-  Sinv  <- solve(Sigma)
-  w <- as.numeric(Sinv %*% (mhi - mlo))
-  b <- -0.5 * as.numeric(mhi %*% Sinv %*% mhi - mlo %*% Sinv %*% mlo) + log(n_hi / n_lo)
-  lda_pair_coef[[paste0(lo, "_", hi)]] <- list(w = w, b = b)
-}
-lda_eta_pair_raw <- function(lo, hi, Xnew) {
-  cf <- lda_pair_coef[[paste0(lo, "_", hi)]]
-  as.numeric(Xnew %*% cf$w + cf$b)
-}
-
-## Firth pairwise fits (bias-reduced logistic regression via modified-score
-## IRLS), evaluated as a raw linear predictor for the same reason.
-firth_logistic3 <- function(X, y, tol = 1e-8, max_iter = 50) {
-  X <- cbind(Intercept = 1, X)
-  beta <- rep(0, ncol(X))
-  for (i in 1:max_iter) {
-    eta  <- as.vector(X %*% beta)
-    p_i  <- plogis(eta)
-    W    <- p_i * (1 - p_i)
-    XtWX <- t(X) %*% (X * W)
-    XtWX_inv <- solve(XtWX)
-    h <- W * rowSums((X %*% XtWX_inv) * X)
-    U_star <- t(X) %*% (y - p_i + h * (0.5 - p_i))
-    step <- as.vector(XtWX_inv %*% U_star)
-    beta <- beta + step
-    if (max(abs(step)) < tol) break
-  }
-  list(beta = beta)
-}
-firth_pair_fits <- list()
-for (pr in pairs3) {
-  lo <- pr[1]; hi <- pr[2]
-  sub <- dat3[dat3$class %in% c(lo, hi), ]
-  Xp <- as.matrix(sub[, c("x", "y")])
-  yp <- as.integer(sub$class == hi)
-  firth_pair_fits[[paste0(lo, "_", hi)]] <- firth_logistic3(Xp, yp)
-}
-firth_eta_pair_raw <- function(lo, hi, Xnew) {
-  fit <- firth_pair_fits[[paste0(lo, "_", hi)]]
-  as.numeric(cbind(1, Xnew) %*% fit$beta)
-}
-
-## Signed log-odds of class a over class b (a != b, either order), for a
-## given base classifier's raw pairwise score function.
-make_log_odds <- function(eta_pair_raw) {
-  function(a, b, Xnew) {
-    lo <- min(a, b); hi <- max(a, b)
-    eta <- eta_pair_raw(lo, hi, Xnew)
-    if (a == hi) eta else -eta
-  }
-}
-lda_log_odds   <- make_log_odds(lda_eta_pair_raw)
-firth_log_odds <- make_log_odds(firth_eta_pair_raw)
-
-## Closed-form partial WLW coupling: p_i : p_j : p_k = exp(eta_ik) : exp(eta_jk) : 1,
-## computed via the standard softmax stabilization from the never-saturated
-## raw log-odds (see prose above).
-couple_predict_partial <- function(Xnew, i, j, k, log_odds_fn) {
-  eta_i <- log_odds_fn(i, k, Xnew)
-  eta_j <- log_odds_fn(j, k, Xnew)
-  Pm <- matrix(0, nrow(Xnew), 3)
-  for (row in seq_len(nrow(Xnew))) {
-    L <- numeric(3)
-    L[i] <- eta_i[row]; L[j] <- eta_j[row]; L[k] <- 0
-    w <- exp(L - max(L))
-    Pm[row, ] <- w / sum(w)
-  }
-  Pm
-}
-
-## Exact Bayes-optimal classifier from the true generating means.
-bayes_predict3 <- function(Xnew) {
-  D <- cbind(
-    rowSums((Xnew - matrix(mu1, nrow(Xnew), 2, byrow = TRUE))^2),
-    rowSums((Xnew - matrix(mu2, nrow(Xnew), 2, byrow = TRUE))^2),
-    rowSums((Xnew - matrix(mu3, nrow(Xnew), 2, byrow = TRUE))^2)
-  )
-  logf <- -0.5 * D
-  m <- apply(logf, 1, max)
-  ex <- exp(logf - m)
-  ex / rowSums(ex)
-}
-
-## Grid over the rectangle bounding the three means.
-margin3 <- 4
-gx3 <- seq(min(means3[, 1]) - margin3, max(means3[, 1]) + margin3, length.out = 100)
-gy3 <- seq(min(means3[, 2]) - margin3, max(means3[, 2]) + margin3, length.out = 100)
-grid3 <- expand.grid(x = gx3, y = gy3)
-Xg3 <- as.matrix(grid3)
-nx3 <- length(gx3); ny3 <- length(gy3)
-grid3$pred_bayes <- max.col(bayes_predict3(Xg3))
-
-class_cols3 <- c("#e41a1c", "#4daf4a", "#377eb8")   # red, green, blue
-
-add_bayes_boundary3 <- function() {
-  contour(gx3, gy3, matrix(grid3$pred_bayes, nx3, ny3), levels = c(1.5, 2.5),
-          add = TRUE, drawlabels = FALSE, lwd = 2, lty = 2, col = "black")
-}
-
-plot_argmax_panel <- function(pred_col, title) {
-  image(gx3, gy3, matrix(pred_col, nx3, ny3),
-        col = adjustcolor(class_cols3, alpha.f = 0.15), breaks = c(0.5, 1.5, 2.5, 3.5),
-        xlab = "", ylab = "", asp = 1, main = title)
-  points(dat3$x, dat3$y, col = class_cols3[dat3$class], pch = 16, cex = 0.4)
-  points(means3[, 1], means3[, 2], pch = 4, lwd = 3, cex = 1.3)
-  add_bayes_boundary3()
-}
-
-drops <- list(drop12 = c(i = 1, j = 2, k = 3),
-              drop13 = c(i = 1, j = 3, k = 2),
-              drop23 = c(i = 2, j = 3, k = 1))
-drop_titles <- c(drop12 = "drop pair (1,2)", drop13 = "drop pair (1,3)", drop23 = "drop pair (2,3)")
-
-## Layout: a slim legend row spanning both columns on top, then the 3x2
-## grid of panels below.
-layout(matrix(c(1, 1,
-                 2, 3,
-                 4, 5,
-                 6, 7), nrow = 4, byrow = TRUE),
-       heights = c(0.6, 3, 3, 3))
-
-par(mar = c(0, 0, 0, 0))
-plot.new()
-legend("center", bty = "n", cex = 1.4, horiz = TRUE,
-       legend = c(paste("class", 1:3), "", "Bayes boundary"),
-       col = c(class_cols3, NA, "black"), pch = c(16, 16, 16, NA, NA),
-       lty = c(NA, NA, NA, NA, 2), lwd = 2, seg.len = 2, text.width = NA)
-
-par(mar = c(4, 4, 3, 1))
-for (dn in names(drops)) {
-  d <- drops[[dn]]
-  pred_lda   <- max.col(couple_predict_partial(Xg3, d["i"], d["j"], d["k"], lda_log_odds))
-  pred_firth <- max.col(couple_predict_partial(Xg3, d["i"], d["j"], d["k"], firth_log_odds))
-  plot_argmax_panel(pred_lda, paste0("LDA, ", drop_titles[dn]))
-  plot_argmax_panel(pred_firth, paste0("Firth LR, ", drop_titles[dn]))
-}
-```-->
-
-
 ```{r}
-#| label: fig-partial-coupling
-#| echo: false
-#| warning: false
-#| message: false
-#| fig-cap: Argmax decision regions under partial (2-term) Wu-Lin-Weng coupling on three-class dataset, dropping one pairwise term at a time (rows), for LDA (left column) and Firth logistic regression (right column) as the one-vs-one base classifier. The true Bayes boundary is overlaid (dashed).
-#| fig-width: 7.5
-#| fig-height: 10.5
-set.seed(1)
-
-## Class means: right triangle with sides 9, 12, 15 (right angle at class 1).
+#| label: partial-coupling-setup
+#| include: false
 ## ---------------------------------------------------------------------------
-## Partial one-vs-one coupling on speaker embeddings.
-## Drop-in replacement for the simulated 9-12-15 chunk.
+## Partial one-vs-one coupling on speaker embeddings: both English fables,
+## 400 ms non-overlapping clips, each recording split 70/30 in time (first 70 %
+## of its speech -> training, last 30 % -> testing) before cutting.
+## Embeddings: prepare_embeddings.py --seg-ms 400 --overlap 0 --audio-split 0.7
 ## ---------------------------------------------------------------------------
-if (!dir.exists("data")) {
-  ## soundfile is only needed to regenerate the embeddings from raw audio;
-  ## skip the check entirely when the cached CSVs are already present.
-  req_pkgs <- c("soundfile")
-  missing_pkgs <- req_pkgs[!sapply(req_pkgs, reticulate::py_module_available)]
-  if (length(missing_pkgs) > 0) {
-    message("Installing missing Python packages: ", paste(missing_pkgs, collapse = ", "))
-    reticulate::py_install(missing_pkgs)
+EMB_CSV <- "data/embeddings_EN_EB_400ms_overlap0_audiosplit70.csv"
+if (!file.exists(EMB_CSV)) {
+  ## First render on a new machine: build the embeddings from recordings/ with
+  ## prepare_embeddings.py. Unless AMS_PYTHON points to a Python that already has
+  ## the packages in requirements.txt, a local environment .venv is created and
+  ## the packages are installed into it (needs Python 3.9-3.12 and internet;
+  ## a few minutes and about 1 GB once). Later renders reuse the CSV.
+  venv_py <- if (.Platform$OS.type == "windows") file.path(".venv", "Scripts", "python.exe") else file.path(".venv", "bin", "python")
+  py <- Sys.getenv("AMS_PYTHON", unset = "")
+  if (!nzchar(py)) {
+    if (!file.exists(venv_py)) {
+      sys_py <- Sys.which(c("python3", "python"))
+      sys_py <- unname(sys_py[nzchar(sys_py)][1])
+      if (is.na(sys_py)) stop("Python 3 is needed to prepare the speaker embeddings (https://www.python.org).")
+      stopifnot(system2(sys_py, c("-m", "venv", ".venv")) == 0)
+      stopifnot(system2(venv_py, c("-m", "pip", "install", "--upgrade", "pip")) == 0)
+      stopifnot(system2(venv_py, c("-m", "pip", "install", "-r", "requirements.txt")) == 0)
+    }
+    py <- venv_py
   }
-  source("data_preparation.R")
-} else {
-  message("Found existing 'data' directory. Loading CSVs directly...")
-  tr <- read.csv("data/embeddings_EN_clean.csv")
-  te <- read.csv("data/embeddings_UN_clean.csv")
-}   # leaves `tr` (english) and `te` (urdu) in memory
-
-spk <- sort(unique(tr$speaker))                                # "A" "M" "S"
-Xtr192 <- as.matrix(tr[, -1]); ytr <- factor(tr$speaker, levels = spk)
-Xte192 <- as.matrix(te[, -1]); yte <- factor(te$speaker, levels = spk)
-p192 <- ncol(Xtr192); K3 <- 3
+  status <- system2(py, c("prepare_embeddings.py", "--seg-ms", "400", "--overlap", "0", "--audio-split", "0.7"))
+  stopifnot(status == 0, file.exists(EMB_CSV))
+}
+emb <- read.csv(EMB_CSV)
+emb$speaker <- factor(emb$speaker)
+X192 <- as.matrix(emb[, grep("^dim_", names(emb))])
+spk  <- levels(emb$speaker)                                    # "A" "M" "S"
+is_train <- emb$set == "train"
+Xtr192 <- X192[is_train, ];  ytr <- emb$speaker[is_train]
+Xte192 <- X192[!is_train, ]; yte <- emb$speaker[!is_train]
+p192 <- ncol(X192); K3 <- 3
+n_tr <- nrow(Xtr192); n_te <- nrow(Xte192)
 
 ## Regularized LDA projection 192 -> K-1 = 2, fitted on the training data only.
-## S_w is shrunk toward a scaled identity before inversion because n only just
-## exceeds p; whitening then makes the pooled within-class covariance spherical.
+## S_w is shrunk toward a scaled identity before inversion because n only
+## moderately exceeds p; whitening then makes the pooled within-class covariance
+## spherical.
 alpha3 <- 0.5
 nk3    <- as.integer(table(ytr))
 mu192  <- t(sapply(spk, function(k) colMeans(Xtr192[ytr == k, ])))
@@ -756,9 +565,56 @@ P2     <- Wh192 %*% V2
 Ztr <- Xtr192 %*% P2; Zte <- Xte192 %*% P2
 means3 <- t(sapply(spk, function(k) colMeans(Ztr[ytr == k, ])))
 dimnames(means3) <- list(spk, c("x", "y"))
-
 dat3  <- data.frame(x = Ztr[, 1], y = Ztr[, 2], class = ytr)   # training
 test3 <- data.frame(x = Zte[, 1], y = Zte[, 2], class = yte)   # test, plotted
+
+## ---- properties of the reduced data (as in assumption_checks.R) -----------
+royston_H <- function(X) {
+  X <- as.matrix(X); n <- nrow(X); p <- ncol(X)
+  kurt <- function(v) { m <- mean(v); mean((v - m)^4) / mean((v - m)^2)^2 }
+  sf_W <- function(v) cor(sort(v), qnorm(ppoints(length(v), a = 3/8)))^2
+  lx <- log(n)
+  mu <- -1.5861 - 0.31082 * lx - 0.083751 * lx^2 + 0.0038915 * lx^3
+  sg <- exp(-0.4803 - 0.082676 * lx + 0.0030302 * lx^2)
+  z <- vapply(seq_len(p), function(i) {
+    v <- X[, i]
+    W <- if (kurt(v) > 3) sf_W(v) else as.numeric(shapiro.test(v)$statistic)
+    (log(1 - W) - mu) / sg
+  }, numeric(1))
+  u <- 0.715; v <- 0.21364 + 0.015124 * lx^2 - 0.0018034 * lx^3; l <- 5
+  C  <- cor(X); NC <- (C^l) * (1 - (u * (1 - C)^u) / v)
+  mC <- (sum(NC) - p) / (p^2 - p); edf <- p / (1 + (p - 1) * mC)
+  H  <- edf * sum(qnorm(pnorm(-z) / 2)^2) / p
+  pchisq(H, df = edf, lower.tail = FALSE)
+}
+box_M <- function(Z, g) {
+  lv <- levels(droplevels(g)); gq <- length(lv); m <- nrow(Z); q <- ncol(Z)
+  ni <- as.integer(table(g)[lv])
+  Si <- lapply(lv, function(k) cov(Z[g == k, , drop = FALSE]))
+  Sp <- Reduce(`+`, Map(function(S, a) (a - 1) * S, Si, ni)) / (m - gq)
+  M  <- (m - gq) * log(det(Sp)) - sum((ni - 1) * sapply(Si, function(S) log(det(S))))
+  c1 <- (sum(1 / (ni - 1)) - 1 / (m - gq)) * (2 * q^2 + 3 * q - 1) / (6 * (q + 1) * (gq - 1))
+  pchisq(M * (1 - c1), (gq - 1) * q * (q + 1) / 2, lower.tail = FALSE)
+}
+mahalanobis_dist <- function(Z, g, a, b) {
+  i <- g == a; j <- g == b
+  S  <- ((sum(i) - 1) * cov(Z[i, ]) + (sum(j) - 1) * cov(Z[j, ])) / (sum(i) + sum(j) - 2)
+  dm <- colMeans(Z[i, ]) - colMeans(Z[j, ])
+  sqrt(as.numeric(t(dm) %*% solve(S) %*% dm))
+}
+separable_pair <- function(Z, g, a, b) {
+  idx <- g %in% c(a, b); yy <- as.integer(g[idx] == b)
+  fit <- suppressWarnings(glm(yy ~ Z[idx, ], family = binomial))
+  all((fitted(fit) > 0.5) == (yy == 1))
+}
+roy_tr <- sapply(spk, function(k) royston_H(Ztr[ytr == k, ]))
+roy_te <- sapply(spk, function(k) royston_H(Zte[yte == k, ]))
+boxM_tr <- box_M(Ztr, ytr); boxM_te <- box_M(Zte, yte)
+pair_names <- sapply(combn(spk, 2, simplify = FALSE), paste, collapse = "-")
+d_tr <- setNames(sapply(combn(spk, 2, simplify = FALSE), function(pr) mahalanobis_dist(Ztr, ytr, pr[1], pr[2])), pair_names)
+d_te <- setNames(sapply(combn(spk, 2, simplify = FALSE), function(pr) mahalanobis_dist(Zte, yte, pr[1], pr[2])), pair_names)
+sep_tr <- setNames(sapply(combn(spk, 2, simplify = FALSE), function(pr) separable_pair(Ztr, ytr, pr[1], pr[2])), pair_names)
+sep_te <- setNames(sapply(combn(spk, 2, simplify = FALSE), function(pr) separable_pair(Zte, yte, pr[1], pr[2])), pair_names)
 
 pairs3 <- combn(3, 2, simplify = FALSE)   # (1,2) (1,3) (2,3) indexing spk
 
@@ -785,7 +641,7 @@ lda_eta_pair_raw <- function(lo, hi, Xnew) {
 
 ## Firth pairwise fits (bias-reduced logistic regression via modified-score
 ## IRLS), evaluated as a raw linear predictor for the same reason.
-firth_logistic3 <- function(X, y, tol = 1e-8, max_iter = 50) {
+firth_logistic3 <- function(X, y, tol = 1e-8, max_iter = 200) {
   X <- cbind(Intercept = 1, X)
   beta <- rep(0, ncol(X))
   for (i in 1:max_iter) {
@@ -829,7 +685,7 @@ firth_log_odds <- make_log_odds(firth_eta_pair_raw)
 
 ## Closed-form partial WLW coupling: p_i : p_j : p_k = exp(eta_ik) : exp(eta_jk) : 1,
 ## computed via the standard softmax stabilization from the never-saturated
-## raw log-odds (see prose above).
+## raw log-odds (see prose).
 couple_predict_partial <- function(Xnew, i, j, k, log_odds_fn) {
   eta_i <- log_odds_fn(i, k, Xnew)
   eta_j <- log_odds_fn(j, k, Xnew)
@@ -837,6 +693,38 @@ couple_predict_partial <- function(Xnew, i, j, k, log_odds_fn) {
   L[, i] <- eta_i; L[, j] <- eta_j; L[, k] <- 0
   w <- exp(L - apply(L, 1, max))
   w / rowSums(w)
+}
+
+## Full (3-term) WLW coupling via the Wu-Lin-Weng (2004) fixed-point iteration.
+wlw_couple <- function(r, max_iter = 200, eps = 0.005 / nrow(r)) {
+  k <- nrow(r); Q <- matrix(0, k, k)
+  for (pr in pairs3) {
+    a <- pr[1]; b <- pr[2]
+    Q[a, a] <- Q[a, a] + r[b, a]^2; Q[b, b] <- Q[b, b] + r[a, b]^2
+    Q[a, b] <- Q[a, b] - r[b, a] * r[a, b]; Q[b, a] <- Q[b, a] - r[a, b] * r[b, a]
+  }
+  p <- rep(1 / k, k)
+  for (iter in 1:max_iter) {
+    Qp <- as.vector(Q %*% p); pQp <- sum(p * Qp)
+    if (max(abs(Qp - pQp)) < eps) break
+    for (t in 1:k) {
+      diff <- (-Qp[t] + pQp) / Q[t, t]
+      p[t] <- p[t] + diff
+      pQp  <- (pQp + diff * (diff * Q[t, t] + 2 * Qp[t])) / (1 + diff)^2
+      Qp   <- (Qp + diff * Q[t, ]) / (1 + diff)
+      p    <- p / (1 + diff)
+    }
+  }
+  p / sum(p)
+}
+couple_predict_full <- function(Xnew, log_odds_fn) {
+  R <- lapply(1:3, function(a) lapply(1:3, function(b)
+         if (a == b) rep(0, nrow(Xnew)) else plogis(log_odds_fn(a, b, Xnew))))
+  t(sapply(seq_len(nrow(Xnew)), function(row) {
+    r <- matrix(0, 3, 3)
+    for (a in 1:3) for (b in 1:3) r[a, b] <- R[[a]][[b]][row]
+    wlw_couple(r)
+  }))
 }
 
 ## Plug-in Bayes-optimal classifier from the ESTIMATED class means. The plane is
@@ -848,6 +736,86 @@ bayes_predict3 <- function(Xnew) {
   ex <- exp(logf - apply(logf, 1, max))
   ex / rowSums(ex)
 }
+
+drops <- list(drop12 = c(i = 1, j = 2, k = 3),
+              drop13 = c(i = 1, j = 3, k = 2),
+              drop23 = c(i = 2, j = 3, k = 1))
+drop_titles <- c(drop12 = sprintf("drop pair (%s,%s)", spk[1], spk[2]),
+                 drop13 = sprintf("drop pair (%s,%s)", spk[1], spk[3]),
+                 drop23 = sprintf("drop pair (%s,%s)", spk[2], spk[3]))
+
+## ---- held-out accuracies ----------------------------------------------------
+Xte2  <- as.matrix(test3[, c("x", "y")])
+truth <- as.integer(test3$class)
+acc <- function(P) mean(max.col(P) == truth)
+acc_bayes <- acc(bayes_predict3(Xte2))
+acc_full  <- c(LDA = acc(couple_predict_full(Xte2, lda_log_odds)),
+               Firth = acc(couple_predict_full(Xte2, firth_log_odds)))
+acc_drop  <- sapply(drops, function(d) c(
+  LDA   = acc(couple_predict_partial(Xte2, d[["i"]], d[["j"]], d[["k"]], lda_log_odds)),
+  Firth = acc(couple_predict_partial(Xte2, d[["i"]], d[["j"]], d[["k"]], firth_log_odds))))
+lda_max_change <- max(abs(acc_drop["LDA", ] - acc_full["LDA"]))
+pred_dropAS <- max.col(couple_predict_partial(Xte2, 1, 3, 2, firth_log_odds))
+n_S_to_A <- sum(truth == 3 & pred_dropAS == 1)
+
+## ---- linkage-class miscalibration (fig-miscal-box) -----------------------
+## log10 p(k | x) from the pairwise classifier of pair (c, k), computed on the
+## log scale from the raw log-odds, so no clamping is needed.
+log10_pk <- function(c, k, X, eta_fn) {
+  lo <- min(c, k); hi <- max(c, k)
+  sgn <- if (k == hi) 1 else -1                      # log-odds of k over c
+  plogis(sgn * eta_fn(lo, hi, X), log.p = TRUE) / log(10)
+}
+## For each dropped pair (i, j) with linkage class k: classifier i-k on the
+## class-i test points and classifier j-k on the class-j test points.
+link <- list(); link_diff <- numeric(0); link_lab <- character(0); link_acc <- numeric(0)
+for (d in drops) {
+  i <- d[["i"]]; j <- d[["j"]]; k <- d[["k"]]
+  for (c in c(i, j)) {
+    X <- Xte2[truth == c, , drop = FALSE]
+    link[[length(link) + 1]] <- list(
+      v = log10_pk(c, k, X, firth_eta_pair_raw) - log10_pk(c, k, X, lda_eta_pair_raw),
+      cls = c, lab = sprintf("%s-%s\n(%s points)", spk[c], spk[k], spk[c]))
+  }
+  n <- length(link)
+  link_diff <- c(link_diff, median(link[[n]]$v) - median(link[[n - 1]]$v))
+  link_lab  <- c(link_lab, sprintf("drop %s-%s (linkage %s)", spk[i], spk[j], spk[k]))
+  sel <- truth %in% c(i, j)      # accuracy on the test clips of the two dropped classes
+  link_acc  <- c(link_acc, mean(max.col(couple_predict_partial(Xte2[sel, ], i, j, k, firth_log_odds)) == truth[sel]))
+}
+names(link_diff) <- names(link_acc) <- names(drops)
+
+f2 <- function(x) sprintf("%.2f", x)
+f3 <- function(x) sprintf("%.3f", x)
+pct <- function(x) sprintf("%.1f", 100 * x)
+```
+
+The models discussed so far are inherently binary. A common way to extend a binary classifier to $K > 2$ classes is to fit a model on every pair of classes and then *couple* the $\binom{K}{2}$ pairwise probability estimates into a single probability vector over all $K$ classes [@hastie1998classification]. There have been many proposals of coupling methods, but the one in most common use was proposed by Wu--Lin--Weng [@wu2004probability].
+
+We empirically evaluate the pairwise coupling framework using a three-class ($K = 3$) speaker recognition task. The dataset includes speech audio from three speakers ($A$, $M$, and $S$), each reciting two English fables: *The North Wind and the Sun* and *The Boy Who Cried Wolf*. The process of converting the raw recordings into classifier-ready inputs follows a short pipeline. First, the audio is resampled to 16 kHz. An energy-based voice-activity detection method retains only segments that are predominantly speech, removing silence and background noise. The first 70% of each speaker's audio is used for training and the last 30% for testing. Inside each part separately, the audio is segmented into non-overlapping 400 ms clips. Each clip is processed by a pretrained speaker-embedding neural network, ECAPA-TDNN [@desplanques2020ecapa], which compresses it into a 192-dimensional vector that summarizes speaker identity, independent of spoken content. Each embedding is subsequently re-scaled to unit $L_2$ norm. This yields $N_{\text{train}} = `r n_tr`$ training embedding vectors (`r n_tr / K3` per speaker) and $N_{\text{test}} = `r n_te`$ test embedding vectors (`r n_te / K3` per speaker).
+
+In order to reduce the `r p192`-dimensional embedding space to $K-1=2$ canonical discriminant directions, we use regularized linear discriminant analysis [@friedman1989regularized]. Since the training sample size ($N_{\text{train}} = `r n_tr`$) is only moderately larger than the number of features ($p = `r p192`$), the empirical pooled within-class covariance matrix is ill-conditioned. To overcome this, we apply linear covariance shrinkage towards a scaled identity with a shrinkage intensity of $\gamma = `r alpha3`$. The projection is fitted on the training points only and then applied unchanged to the test points; in the resulting two-dimensional whitened projection the training data's pooled within-class covariance matrix is sphered. The reduced-dimensional data have the following properties:
+
+1. Each class approximately follows a bivariate normal distribution with a shared covariance matrix. On the training set, Royston's multivariate Shapiro--Wilk test [@royston1983some] indicates no significant deviation from normality for any speaker (smallest $p = `r f3(min(roy_tr))`$); on the test set it detects modest departures for speakers $A$ and $S$ ($p = `r f3(roy_te[["A"]])`$ and $p = `r f3(roy_te[["S"]])`$). Box's $M$ test [@friendly2020visualizing] fails to reject the null hypothesis of equal class covariances on either set ($p = `r f3(boxM_tr)`$ and $p = `r f3(boxM_te)`$).
+2. Under homoscedastic bivariate normal distributions, the nearest-sample-mean rule constitutes the plug-in Bayes-optimal decision boundary---the dashed line overlaid in @fig-partial-coupling below.
+3. All class pairs are perfectly linearly separable in the training set. The Mahalanobis distances $\Delta$ between the class means (the multivariate generalisation of Cohen's $d$, to which $\Delta$ reduces in one dimension) for the pairs ($A$--$M$, $A$--$S$, $M$--$S$) are $`r f2(d_tr[["A-M"]])`$, $`r f2(d_tr[["A-S"]])`$, and $`r f2(d_tr[["M-S"]])`$ on the training set, and $`r f2(d_te[["A-M"]])`$, $`r f2(d_te[["A-S"]])`$, and $`r f2(d_te[["M-S"]])`$ on the test set, where only the pair $M$--$S$ remains separable. The training distances are larger because the projection was fitted on the training clips.
+
+To evaluate model generalization for each pair of classes, we fit two different one-vs-one base classifiers: LDA (closed-form pooled-covariance discriminant) and a Firth (bias-reduced) logistic regression [@firth1993bias], the latter generalizing the one-dimensional Firth fit used earlier in this paper. For each base classifier, the three pairwise fits are combined into one three-class probability vector via the fixed-point iteration of Wu, Lin and Weng (2004)---the same algorithm LIBSVM uses to turn one-vs-one SVM outputs into multi-class probabilities [@chang2011libsvm]. Full (3-term) WLW coupling recovers the Bayes decision boundaries closely for both base classifiers: on the held-out points, LDA and Firth reach accuracies of $`r f3(acc_full[["LDA"]])`$ and $`r f3(acc_full[["Firth"]])`$, against $`r f3(acc_bayes)`$ for the plug-in Bayes classifier.
+
+Wu--Lin--Weng coupling finds the probability vector $p$ minimizing $L(p) = \sum_{i<j}(r_{ji}\,p_i - r_{ij}\,p_j)^2$, a sum over all $\binom{3}{2}=3$ pairwise terms, where $r_{ij}$ is the pairwise estimate of the probability of class $i$ given that the point belongs to class $i$ or $j$.
+
+With only three classes, dropping pair $(i,j)$ leaves exactly two terms in the objective, for pairs $(i,k)$ and $(j,k)$ with $k$ the remaining class. These two terms are independent of each other (neither involves both $p_i$ and $p_j$), so both can be driven to exactly zero at once: $r_{ki}\,p_i = r_{ik}\,p_k$ and $r_{kj}\,p_j = r_{jk}\,p_k$. This pins down the class ratios directly from the two kept pairwise odds, $p_i:p_j:p_k = \frac{r_{ik}}{r_{ki}} : \frac{r_{jk}}{r_{kj}} : 1$, with no optimization needed at all. We evaluate this ratio from each pairwise classifier's raw log-odds rather than from its probability output: with class means $`r f2(min(d_tr))`$--$`r f2(max(d_tr))`$ units apart, a pairwise probability routinely saturates to exactly $0$ or $1$ in floating point, which would silently discard precisely the information needed to tell $i$ and $j$ apart far from class $k$.
+
+@fig-partial-coupling shows the argmax regions for all three partial-coupling variants (rows) using LDA (left column) and Firth logistic regression (right column) as the one-vs-one base classifier. Dropping the pair $(i,j)$ predictably degrades the boundary specifically between classes $i$ and $j$ (since the coupling step no longer sees that pairwise comparison directly, only indirectly through their shared comparisons with class $k$), while leaving the region boundaries involving the third class comparatively unaffected. The two base classifiers differ sharply in how much damage this causes, however: LDA's decision regions move only slightly under all three pair removals (its accuracy changes by at most $`r round(100 * lda_max_change)`$ percentage points), while Firth's shift markedly and collapse for one specific dropped pair---dropping $(A,S)$ reduces Firth's held-out accuracy from $`r f3(acc_full[["Firth"]])`$ to $`r f3(acc_drop["Firth", "drop13"])`$, with $`r n_S_to_A`$ of the $`r sum(truth == 3)`$ test points of speaker $S$ assigned to speaker $A$.
+
+```{r}
+#| label: fig-partial-coupling
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: Argmax decision regions under partial (2-term) Wu--Lin--Weng coupling on the three-speaker dataset, dropping one pairwise term at a time (rows), for LDA (left column) and Firth logistic regression (right column) as the one-vs-one base classifier. Points are the held-out test clips, crosses the training class means. The plug-in Bayes boundary is overlaid (dashed).
+#| fig-width: 7.5
+#| fig-height: 10.5
 
 ## Grid over the rectangle bounding the data and the three means.
 margin3 <- 4
@@ -866,23 +834,16 @@ add_bayes_boundary3 <- function() {
           add = TRUE, drawlabels = FALSE, lwd = 2, lty = 2, col = "black")
 }
 
-## Points shown are the held-out second-recording (test) segments; the crosses
-## are the training centroids that define the plug-in Bayes boundary.
+## Points shown are the held-out test clips; the crosses are the training
+## centroids that define the plug-in Bayes boundary.
 plot_argmax_panel <- function(pred_col, title) {
   image(gx3, gy3, matrix(pred_col, nx3, ny3),
         col = adjustcolor(class_cols3, alpha.f = 0.15), breaks = c(0.5, 1.5, 2.5, 3.5),
-        xlab = "", ylab = "", asp = 1, main = title)
+        xlab = "", ylab = "", asp = 1, main = title, useRaster = TRUE)
   points(test3$x, test3$y, col = class_cols3[as.integer(test3$class)], pch = 16, cex = 0.4)
   points(means3[, 1], means3[, 2], pch = 4, lwd = 3, cex = 1.3)
   add_bayes_boundary3()
 }
-
-drops <- list(drop12 = c(i = 1, j = 2, k = 3),
-              drop13 = c(i = 1, j = 3, k = 2),
-              drop23 = c(i = 2, j = 3, k = 1))
-drop_titles <- c(drop12 = sprintf("drop pair (%s,%s)", spk[1], spk[2]),
-                 drop13 = sprintf("drop pair (%s,%s)", spk[1], spk[3]),
-                 drop23 = sprintf("drop pair (%s,%s)", spk[2], spk[3]))
 
 ## Layout: a slim legend row spanning both columns on top, then the 3x2
 ## grid of panels below.
@@ -897,8 +858,8 @@ plot.new()
 legend("center", bty = "n", cex = 1.4, horiz = TRUE,
        legend = c(paste("speaker", spk), "", "plug-in Bayes boundary"),
        col = c(class_cols3, NA, "black"), pch = c(16, 16, 16, NA, NA),
-       lty = c(NA, NA, NA, NA, 2), lwd = 2, seg.len = 2, x.intersp = 0.7,                                     # Reduces symbol-to-text spacing
-       text.width = c(rep(0.12, 3), 0.03, 0.25))           # Adjust column widths manually
+       lty = c(NA, NA, NA, NA, 2), lwd = 2, seg.len = 2, x.intersp = 0.7,  # Reduces symbol-to-text spacing
+       text.width = c(rep(0.12, 3), 0.03, 0.25))                         # Adjust column widths manually
 
 par(mar = c(4, 4, 3, 1))
 for (dn in names(drops)) {
@@ -910,69 +871,48 @@ for (dn in names(drops)) {
 }
 ```
 
-The partial-coupling experiment in @fig-partial-coupling shows that Firth logistic regression is substantially more sensitive to the removal of a pairwise comparison than LDA, we next investigate whether this fragility can be explained by multiplicative miscalibration of the individual pairwise classifiers. Since the class-conditional distributions satisfy the assumptions under which LDA provides the appropriate discriminant model, we use LDA as a reference for assessing the pairwise probability estimates produced by Firth logistic regression. For each pair $(i,j)$, we restrict the analysis to held-out test points whose true speaker is $i$—speaker A for pairs A–M and A–S, and speaker M for pair M–S— so that speaker $j$ is the less likely class for every evaluated point. We then measure multiplicative miscalibration as $(\log_{10}(p_{\mathrm{Firth}}/p_{\mathrm{LDA}}))$. The results are shown in @fig-miscal-box. Interestingly, the least-separated pair exhibits the smallest miscalibration, yet removing this pair produces the largest degradation in the Firth coupled predictions as seen in @fig-partial-coupling. Thus, the pair that is most reliable relative to the LDA reference can nevertheless be the most critical to the coupling procedure. 
+The partial-coupling experiment in @fig-partial-coupling shows that Firth logistic regression is substantially more sensitive to the removal of a pairwise comparison than LDA. We now explain this behaviour through multiplicative miscalibration. When the pair $(i,j)$ is dropped, the third class $k$ becomes a *linkage class*, and the coupled odds can be recovered only as
+$$
+\frac{p(i)}{p(j)}
+=
+\frac{p(i)}{p(k)}
+\cdot
+\frac{p(k)}{p(j)},
+$$ {#eq-odds}
+so the two remaining classifiers, $i$--$k$ and $j$--$k$, enter only through their estimates of $p(k)$. With LDA as the reference, we compute the multiplicative miscalibration of the linkage class $k$ on the $i$--$k$ classifier on the test points of class $i$ and the $j$--$k$ classifier on those of class $j$, so the $k$ is the less likely class as shown in @fig-miscal-box. If both classifiers were equally miscalibrated, their errors would cancel in @eq-odds and the coupled odds would be unaffected; if the miscalibration is unequal, the remaining imbalance distorts $p(i)/p(j)$ and can cause test points to be misclassified. 
+
 
 ```{r}
 #| label: fig-miscal-box
 #| echo: false
 #| warning: false
 #| message: false
-#| fig-cap: Multiplicative miscalibration ($\log_{10}(p_{\mathrm{Firth}}/p_{\mathrm{LDA}})$) of the less likely class in each pair. The dashed red line marks perfect calibration relative to the LDA baseline.
-#| fig-width: 4
-#| fig-height: 4
-
-Xte2 <- as.matrix(test3[, c("x", "y")])
-miscal <- list()
-for (pr in pairs3) {
-  lo <- pr[1]; hi <- pr[2]; key <- paste0(lo, "_", hi)
-  idx <- as.integer(test3$class) == lo
-  Xte_lo <- Xte2[idx, , drop = FALSE]
-  eta_lda   <- lda_eta_pair_raw(lo, hi, Xte_lo)
-  eta_firth <- firth_eta_pair_raw(lo, hi, Xte_lo)
-  p_lda   <- pmax(plogis(eta_lda),   1e-300)
-  p_firth <- pmax(plogis(eta_firth), 1e-300)
-  miscal[[key]] <- log10(p_firth) - log10(p_lda)
-}
+#| fig-cap: Multiplicative miscalibration $\log_{10}\bigl(p_{\mathrm{Firth}}(k)/p_{\mathrm{LDA}}(k)\bigr)$ of the linkage class $k$ when the pair $(i,j)$ is dropped. The dashed red line marks perfect calibration relative to the LDA baseline; the difference between the two medians is shown above each dropped pair.
+#| fig-width: 7
+#| fig-height: 4.5
 
 layout(1)   # reset the multi-panel layout left over from fig-partial-coupling
-par(mar = c(4.5, 4.5, 2, 1))
-boxplot(miscal[["1_2"]], miscal[["1_3"]], miscal[["2_3"]],
-        names = c("A-M", "A-S", "M-S"), col = "grey85",
-       ylab = expression(log[10](p[Firth] / p[LDA])))
+pos <- c(1, 2, 4, 5, 7, 8)
+top <- max(sapply(link, function(l) max(l$v)))
+bot <- min(0, sapply(link, function(l) min(l$v)))
+par(mar = c(6.2, 4.8, 1.5, 1))
+boxplot(lapply(link, `[[`, "v"), at = pos, xlim = c(0.4, 8.6), ylim = c(bot, top * 1.2),
+        names = FALSE, las = 1,
+        col = adjustcolor(class_cols3[sapply(link, `[[`, "cls")], alpha.f = 0.55),
+        ylab = expression(log[10](p[Firth](k) / p[LDA](k))))
+mtext(sapply(link, `[[`, "lab"), side = 1, line = 1.8, at = pos, cex = 0.75)
 abline(h = 0, col = "red", lwd = 2, lty = 2)
+abline(v = c(3, 6), col = "grey80")
+for (g in seq_along(link_diff)) {
+  x1 <- pos[2 * g - 1]; x2 <- pos[2 * g]; y <- top * 1.08
+  segments(x1, y, x2, y); segments(c(x1, x2), y, c(x1, x2), y - top * 0.025)
+  text(mean(c(x1, x2)), y, sprintf("difference = %.2f", link_diff[g]), pos = 3, cex = 0.8)
+  mtext(link_lab[g], side = 1, line = 4.3, at = mean(c(x1, x2)), cex = 0.8, font = 2)
+}
 ```
 
-```{r}
-#| label: ratio-decomposition
-#| echo: false
-#| warning: false
-#| message: false
+For every dropped pair, both Firth classifiers overestimate the linkage class, but not by the same amount. The reason lies in the separation of the classes. As @fig-firth-dscan shows, the multiplicative miscalibration of a Firth classifier grows with the separation of its two classes. The two bridging classifiers, $i$--$k$ and $j$--$k$, are trained on pairs of classes that are separated to different degrees, so they inflate $p(k)$ by different amounts: the larger the difference between their Mahalanobis distances, the larger the imbalance left in @eq-odds. The two extreme cases make this concrete. When $(A,S)$ is dropped, the bridging pairs $A$--$M$ and $S$--$M$ differ most in separation (Mahalanobis distance of $`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["M-S"]])`$); their miscalibrations differ by $`r f2(link_diff[["drop13"]])`$ orders of magnitude, and the Firth coupling loses the most accuracy. When $(M,S)$ is dropped, the bridging pairs $M$--$A$ and $S$--$A$ are almost equally separated ($`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["A-S"]])`$); the imbalance is only $`r f2(link_diff[["drop23"]])`$, and the accuracy is unchanged. Whether an imbalance actually misclassifies points depends, in addition, on the dropped pair itself: the closer the classes $i$ and $j$ are, the smaller the imbalance needed to push points of one into the other. The coupling therefore fails not because one classifier is miscalibrated, but because the two bridging classifiers are miscalibrated unequally.
 
-idx_M <- as.integer(test3$class) == 2
-X_M   <- as.matrix(test3[idx_M, c("x", "y")])
-pred_dropAM <- max.col(couple_predict_partial(X_M, i = 1, j = 2, k = 3, firth_log_odds))
-X_bad <- X_M[pred_dropAM == 1, , drop = FALSE]   # true M, predicted A by drop-(A,M) coupling
-
-## p(S) as reported by the A-S classifier (Firth vs. LDA reference)
-p_S_AS_firth <- pmax(plogis(firth_eta_pair_raw(1, 3, X_bad)), 1e-300)
-p_S_AS_lda   <- pmax(plogis(lda_eta_pair_raw(1, 3, X_bad)),   1e-300)
-mis_AS <- median(log10(p_S_AS_firth) - log10(p_S_AS_lda))
-
-## p(S) as reported by the M-S classifier (Firth vs. LDA reference)
-p_S_MS_firth <- pmax(plogis(firth_eta_pair_raw(2, 3, X_bad)), 1e-300)
-p_S_MS_lda   <- pmax(plogis(lda_eta_pair_raw(2, 3, X_bad)),   1e-300)
-mis_MS <- median(log10(p_S_MS_firth) - log10(p_S_MS_lda))
-```
-
-Consider the `r sum(pred_dropAM == 1)` held-out M test points that the drop-$(A,M)$ coupling in @fig-partial-coupling misclassifies as A. By dropping the A-M classifier, the odds ratio $p(A)/p(M)$ between classes A and M can only be recovered by routing through class S:
-
-$$
-\frac{p(A)}{p(M)} = \frac{p(A)}{p(S)} \cdot \frac{p(S)}{p(M)}
-$$ {#eq-ratio3}
-
-so the coupled prediction depends on how well the A-S and M-S classifiers each estimate $p(S)$. For these points, both classifiers inflate $p(S)$ relative to the LDA reference, but by very different amounts: the median $\log_{10}(p_{\mathrm{Firth}}/p_{\mathrm{LDA}})$ is $6.05$ for A-S versus $15.65$ for M-S, a difference of nearly `r round(mis_MS - mis_AS, 1)` orders of magnitude. Had the two classifiers been equally miscalibrated, their errors would cancel in @eq-ratio3 and the coupled prediction would still be correct. Instead, the M-S classifier's far larger overestimate of $p(S)$ pulls $p(M)$ down more than the A-S classifier's smaller overestimate pulls $p(A)$ down, so class A ends up with the higher coupled probability even though the true speaker is M.
-
-As @fig-firth-dscan shows, miscalibration increases with Cohen's $d$; since the A-S and M-S pairs differ in Cohen's $d$ (@fig-miscal-box), they are affected unequally — which is exactly the asymmetry driving the misclassification.
 
 ## Out-of-distribution-detection
 
