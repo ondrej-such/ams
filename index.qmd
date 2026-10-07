@@ -766,20 +766,26 @@ log10_pk <- function(c, k, X, eta_fn) {
   sgn <- if (k == hi) 1 else -1                      # log-odds of k over c
   plogis(sgn * eta_fn(lo, hi, X), log.p = TRUE) / log(10)
 }
-## For each dropped pair (i, j) with linkage class k: classifier i-k on the
-## class-i test points and classifier j-k on the class-j test points.
+## For each dropped pair (i, j) with linkage class k, both remaining classifiers,
+## i-k and j-k, are evaluated on the SAME test points: those of the examined class
+## of the dropped pair (M when A-M is dropped, S when A-S is dropped, M when M-S
+## is dropped). The first box is the classifier of the other class of the pair,
+## the second that of the examined class; the difference of their medians is the
+## net push on these points towards the other class of the dropped pair.
+eval_cls <- c(drop12 = match("M", spk), drop13 = match("S", spk), drop23 = match("M", spk))
 link <- list(); link_diff <- numeric(0); link_lab <- character(0); link_acc <- numeric(0)
-for (d in drops) {
-  i <- d[["i"]]; j <- d[["j"]]; k <- d[["k"]]
-  for (c in c(i, j)) {
-    X <- Xte2[truth == c, , drop = FALSE]
+for (dn in names(drops)) {
+  d <- drops[[dn]]; i <- d[["i"]]; j <- d[["j"]]; k <- d[["k"]]
+  pc <- eval_cls[[dn]]; other <- if (pc == i) j else i
+  X <- Xte2[truth == pc, , drop = FALSE]
+  for (c in c(other, pc)) {
     link[[length(link) + 1]] <- list(
       v = log10_pk(c, k, X, firth_eta_pair_raw) - log10_pk(c, k, X, lda_eta_pair_raw),
-      cls = c, lab = sprintf("%s-%s\n(%s points)", spk[c], spk[k], spk[c]))
+      cls = c, lab = sprintf("%s-%s\nclassifier", spk[c], spk[k]))
   }
   n <- length(link)
   link_diff <- c(link_diff, median(link[[n]]$v) - median(link[[n - 1]]$v))
-  link_lab  <- c(link_lab, sprintf("drop %s-%s (linkage %s)", spk[i], spk[j], spk[k]))
+  link_lab  <- c(link_lab, sprintf("drop %s-%s (linkage %s)\non %s points", spk[i], spk[j], spk[k], spk[pc]))
   sel <- truth %in% c(i, j)      # accuracy on the test clips of the two dropped classes
   link_acc  <- c(link_acc, mean(max.col(couple_predict_partial(Xte2[sel, ], i, j, k, firth_log_odds)) == truth[sel]))
 }
@@ -794,12 +800,12 @@ The models discussed so far are inherently binary. A common way to extend a bina
 
 We empirically evaluate the pairwise coupling framework using a three-class ($K = 3$) speaker recognition task. The dataset includes speech audio from three speakers ($A$, $M$, and $S$), each reciting two English fables: *The North Wind and the Sun* and *The Boy Who Cried Wolf*. The process of converting the raw recordings into classifier-ready inputs follows a short pipeline. First, the audio is resampled to 16 kHz. An energy-based voice-activity detection method retains only segments that are predominantly speech, removing silence and background noise. The first 70% of each speaker's audio is used for training and the last 30% for testing. Inside each part separately, the audio is segmented into non-overlapping 400 ms clips. Each clip is processed by a pretrained speaker-embedding neural network, ECAPA-TDNN [@desplanques2020ecapa], which compresses it into a 192-dimensional vector that summarizes speaker identity, independent of spoken content. Each embedding is subsequently re-scaled to unit $L_2$ norm. This yields $N_{\text{train}} = `r n_tr`$ training embedding vectors (`r n_tr / K3` per speaker) and $N_{\text{test}} = `r n_te`$ test embedding vectors (`r n_te / K3` per speaker).
 
-In order to reduce the `r p192`-dimensional embedding space to $K-1=2$ canonical discriminant directions, we use regularized linear discriminant analysis [@friedman1989regularized]. Since the training sample size ($N_{\text{train}} = `r n_tr`$) is only moderately larger than the number of features ($p = `r p192`$), the empirical pooled within-class covariance matrix is ill-conditioned. To overcome this, we apply linear covariance shrinkage towards a scaled identity with a shrinkage intensity of $\gamma = `r alpha3`$. The projection is fitted on the training points only and then applied unchanged to the test points; in the resulting two-dimensional whitened projection the training data's pooled within-class covariance matrix is sphered. The reduced-dimensional data have the following properties:
+In order to reduce the `r p192`-dimensional embedding space to $K-1=2$ canonical discriminant directions, we use regularized linear discriminant analysis [@friedman1989regularized]. Since the training sample size ($N_{\text{train}} = `r n_tr`$) is only moderately larger than the number of features ($p = `r p192`$), the empirical pooled within-class covariance matrix is ill-conditioned. To overcome this, we apply linear covariance shrinkage towards a scaled identity with a shrinkage intensity of $\gamma = `r alpha3`$. The projection is fitted on the training points only and then applied unchanged to the test points; in the resulting two-dimensional whitened projection, the training data's pooled within-class covariance matrix is sphered. The reduced-dimensional data have the following properties:
 
 1. Each class approximately follows a bivariate normal distribution with a shared covariance matrix. On the training set, Royston's multivariate Shapiro--Wilk test [@royston1983some] indicates no significant deviation from normality for any speaker (smallest $p = `r f3(min(roy_tr))`$); on the test set it detects modest departures for speakers $A$ and $S$ ($p = `r f3(roy_te[["A"]])`$ and $p = `r f3(roy_te[["S"]])`$). Box's $M$ test [@friendly2020visualizing] fails to reject the null hypothesis of equal class covariances on either set ($p = `r f3(boxM_tr)`$ and $p = `r f3(boxM_te)`$).
 2. For bivariate normal classes with a common covariance matrix and equal priors, the Bayes-optimal rule assigns each point to the class with the nearest mean; since the projected plane is whitened, nearness is measured by ordinary Euclidean distance. Replacing the unknown true means by the training sample means gives the *plug-in Bayes classifier*.
 
-3. All class pairs are perfectly linearly separable in the training set. The Mahalanobis distances $\Delta$ between the class means (the multivariate generalisation of Cohen's $d$, to which $\Delta$ reduces in one dimension) for the pairs ($A$--$M$, $A$--$S$, $M$--$S$) are $`r f2(d_tr[["A-M"]])`$, $`r f2(d_tr[["A-S"]])`$, and $`r f2(d_tr[["M-S"]])`$ on the training set, and $`r f2(d_te[["A-M"]])`$, $`r f2(d_te[["A-S"]])`$, and $`r f2(d_te[["M-S"]])`$ on the test set, where only the pair $M$--$S$ remains separable. The training distances are larger because the projection was fitted on the training clips.
+3. All class pairs are perfectly linearly separable in the training set. The Mahalanobis distances $\Delta$ between the class means (the multivariate generalization of Cohen's $d$, to which $\Delta$ reduces in one dimension) for the pairs ($A$--$M$, $A$--$S$, $M$--$S$) are $`r f2(d_tr[["A-M"]])`$, $`r f2(d_tr[["A-S"]])`$, and $`r f2(d_tr[["M-S"]])`$ on the training set, and $`r f2(d_te[["A-M"]])`$, $`r f2(d_te[["A-S"]])`$, and $`r f2(d_te[["M-S"]])`$ on the test set, where only the pair $M$--$S$ remains separable. The training distances are larger because the projection was fitted on the training clips.
 
 To evaluate model generalization for each pair of classes, we fit two different one-vs-one base classifiers: LDA (closed-form pooled-covariance discriminant) and a Firth (bias-reduced) logistic regression [@firth1993bias], the latter generalizing the one-dimensional Firth fit used earlier in this paper. For each base classifier, the three pairwise fits are combined into one three-class probability vector via the fixed-point iteration of Wu, Lin and Weng (2004)---the same algorithm LIBSVM uses to turn one-vs-one SVM outputs into multi-class probabilities [@chang2011libsvm]. Full (3-term) WLW coupling recovers the Bayes decision boundaries closely for both base classifiers: on the held-out points, LDA and Firth reach accuracies of $`r f3(acc_full[["LDA"]])`$ and $`r f3(acc_full[["Firth"]])`$, against $`r f3(acc_bayes)`$ for the plug-in Bayes classifier.
 
@@ -872,7 +878,7 @@ for (dn in names(drops)) {
 }
 ```
 
-The partial-coupling experiment in @fig-partial-coupling shows that Firth logistic regression is substantially more sensitive to the removal of a pairwise comparison than LDA. We now explain this behaviour through multiplicative miscalibration. When the pair $(i,j)$ is dropped, the third class $k$ becomes a *linkage class*, and the coupled odds can be recovered only as
+The partial-coupling experiment in @fig-partial-coupling shows that Firth logistic regression is substantially more sensitive to the removal of a pairwise comparison than LDA. We now explain this behavior through multiplicative miscalibration. When the pair $(i,j)$ is dropped, the third class $k$ becomes a *linkage class*, and the coupled odds can be recovered only as
 $$
 \frac{p(i)}{p(j)}
 =
@@ -880,7 +886,7 @@ $$
 \cdot
 \frac{p(k)}{p(j)},
 $$ {#eq-odds}
-so the two remaining classifiers, $i$--$k$ and $j$--$k$, enter only through their estimates of $p(k)$. With LDA as the reference, we compute the multiplicative miscalibration of the linkage class $k$ on the $i$--$k$ classifier on the test points of class $i$ and the $j$--$k$ classifier on those of class $j$, so the $k$ is the less likely class as shown in @fig-miscal-box. If both classifiers were equally miscalibrated, their errors would cancel in @eq-odds and the coupled odds would be unaffected; if the miscalibration is unequal, the remaining imbalance distorts $p(i)/p(j)$ and can cause test points to be misclassified. 
+so the two remaining classifiers, $i$--$k$ and $j$--$k$, enter only through their estimates of $p(k)$. With LDA as the reference, we evaluate the multiplicative miscalibration of the linkage class $k$ with respect to each remaining classifier in the partial model (@fig-miscal-box). If both classifiers were equally miscalibrated, their errors would cancel in @eq-odds and the odds between the two classes of the removed pair would be unaffected; if the miscalibration is unequal, the remaining imbalance distorts $p(i)/p(j)$ and can cause test points to be misclassified. 
 
 
 ```{r}
@@ -888,15 +894,15 @@ so the two remaining classifiers, $i$--$k$ and $j$--$k$, enter only through thei
 #| echo: false
 #| warning: false
 #| message: false
-#| fig-cap: Multiplicative miscalibration $\log_{10}\bigl(p_{\mathrm{Firth}}(k)/p_{\mathrm{LDA}}(k)\bigr)$ of the linkage class $k$ when the pair $(i,j)$ is dropped. The dashed red line marks perfect calibration relative to the LDA baseline; the difference between the two medians is shown above each dropped pair.
+#| fig-cap: Multiplicative miscalibration $\log_{10}\bigl(p_{\mathrm{Firth}}(k)/p_{\mathrm{LDA}}(k)\bigr)$ of the linkage class $k$ when the pair $(i,j)$ is dropped. Both remaining classifiers are evaluated on the same test points, those of $M$ when $(A,M)$ is dropped, of $S$ when $(A,S)$ is dropped, and of $M$ when $(M,S)$ is dropped. The dashed red line marks perfect calibration relative to the LDA baseline; the difference between the two medians is shown above each dropped pair.
 #| fig-width: 7
-#| fig-height: 4.5
+#| fig-height: 4.8
 
 layout(1)   # reset the multi-panel layout left over from fig-partial-coupling
 pos <- c(1, 2, 4, 5, 7, 8)
 top <- max(sapply(link, function(l) max(l$v)))
 bot <- min(0, sapply(link, function(l) min(l$v)))
-par(mar = c(6.2, 4.8, 1.5, 1))
+par(mar = c(7.2, 4.8, 1.5, 1))
 boxplot(lapply(link, `[[`, "v"), at = pos, xlim = c(0.4, 8.6), ylim = c(bot, top * 1.2),
         names = FALSE, las = 1,
         col = adjustcolor(class_cols3[sapply(link, `[[`, "cls")], alpha.f = 0.55),
@@ -907,12 +913,12 @@ abline(v = c(3, 6), col = "grey80")
 for (g in seq_along(link_diff)) {
   x1 <- pos[2 * g - 1]; x2 <- pos[2 * g]; y <- top * 1.08
   segments(x1, y, x2, y); segments(c(x1, x2), y, c(x1, x2), y - top * 0.025)
-  text(mean(c(x1, x2)), y, sprintf("difference = %.2f", link_diff[g]), pos = 3, cex = 0.8)
-  mtext(link_lab[g], side = 1, line = 4.3, at = mean(c(x1, x2)), cex = 0.8, font = 2)
+  text(mean(c(x1, x2)), y, sprintf("median difference = %.2f", link_diff[g]), pos = 3, cex = 0.8)
+  mtext(link_lab[g], side = 1, line = 4.6, at = mean(c(x1, x2)), cex = 0.8, font = 2)
 }
 ```
 
-For every dropped pair, both Firth classifiers overestimate the linkage class, but not by the same amount. The reason lies in the separation of the classes. As @fig-firth-dscan shows, the multiplicative miscalibration of a Firth classifier grows with the separation of its two classes. The two bridging classifiers, $i$--$k$ and $j$--$k$, are trained on pairs of classes that are separated to different degrees, so they inflate $p(k)$ by different amounts: the larger the difference between their Mahalanobis distances, the larger the imbalance left in @eq-odds. The two extreme cases make this concrete. When $(A,S)$ is dropped, the bridging pairs $A$--$M$ and $S$--$M$ differ most in separation (Mahalanobis distance of $`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["M-S"]])`$); their miscalibrations differ by $`r f2(link_diff[["drop13"]])`$ orders of magnitude, and the Firth coupling loses the most accuracy. When $(M,S)$ is dropped, the bridging pairs $M$--$A$ and $S$--$A$ are almost equally separated ($`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["A-S"]])`$); the imbalance is only $`r f2(link_diff[["drop23"]])`$, and the accuracy is unchanged. Whether an imbalance actually misclassifies points depends, in addition, on the dropped pair itself: the closer the classes $i$ and $j$ are, the smaller the imbalance needed to push points of one into the other. The coupling therefore fails not because one classifier is miscalibrated, but because the two bridging classifiers are miscalibrated unequally.
+For every dropped pair, the two Firth classifiers miscalibrate the linkage class by very different amounts. The reason lies in the separation of the classes. As @fig-firth-dscan shows, the multiplicative miscalibration of a Firth classifier grows with the separation of its two classes. The two bridging classifiers, $i$--$k$ and $j$--$k$, are trained on pairs of classes that are separated to different degrees, so they inflate $p(k)$ by different amounts: the larger the difference between their Mahalanobis distances, the larger the imbalance left in @eq-odds. The two extreme cases make this concrete. When $(A,S)$ is dropped, the bridging pairs $A$--$M$ and $S$--$M$ differ most in separation (Mahalanobis distance of $`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["M-S"]])`$); their miscalibrations differ by $`r f2(link_diff[["drop13"]])`$ orders of magnitude, and the Firth coupling loses the most accuracy. When $(M,S)$ is dropped, the bridging pairs $M$--$A$ and $S$--$A$ are almost equally separated ($`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["A-S"]])`$); the imbalance is only $`r f2(link_diff[["drop23"]])`$, and the accuracy is unchanged. Whether an imbalance actually misclassifies points depends, in addition, on the dropped pair itself: the closer the classes $i$ and $j$ are, the smaller the imbalance needed to push points of one into the other. The coupling therefore fails not because one classifier is miscalibrated, but because the two bridging classifiers are miscalibrated unequally.
 
 
 ## Out-of-distribution-detection
