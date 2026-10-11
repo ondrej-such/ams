@@ -497,11 +497,6 @@ for (m in model_order) {
 
 # Applications
 
-Let us describe three applications which could by affected by the phenomenon of multiplicative miscalibration.
-
-## Risk assessment of low probability events
-
-In financial markets, as well as in insurance industry, it is paramount to properly estimate risk. Since one can generally choose to either to buy or to sell a financial instrument (stock, bond, or credit-default swap), an incorrectly set price--both too high or too low---of the instrument provides an opportunity for profiting without taking any risk. The biggest potential payoff is in prediction of very rare events, which typically correspond to highly separable group distributions. Logistic regression is widely used to estimate risk of rare events [@ogundimu2019prediction]. We have seen that multiplicative miscalibration may occur at several orders of magnitude, and thus could provide fabulous returns to a savvy investor if he spots it. Of course, open markets would eventually self-correct and diminish such investment opening. Nevertheless, the first-mover would enjoy a one-in-a-lifetime opportunity.
 
 ## Partial one-vs-one classification
 
@@ -913,7 +908,3 @@ for (g in seq_along(link_diff)) {
 
 For every dropped pair, both Firth classifiers overestimate the linkage class, but not by the same amount. The reason lies in the separation of the classes. As @fig-firth-dscan shows, the multiplicative miscalibration of a Firth classifier grows with the separation of its two classes. The two bridging classifiers, $i$--$k$ and $j$--$k$, are trained on pairs of classes that are separated to different degrees, so they inflate $p(k)$ by different amounts: the larger the difference between their Mahalanobis distances, the larger the imbalance left in @eq-odds. The two extreme cases make this concrete. When $(A,S)$ is dropped, the bridging pairs $A$--$M$ and $S$--$M$ differ most in separation (Mahalanobis distance of $`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["M-S"]])`$); their miscalibrations differ by $`r f2(link_diff[["drop13"]])`$ orders of magnitude, and the Firth coupling loses the most accuracy. When $(M,S)$ is dropped, the bridging pairs $M$--$A$ and $S$--$A$ are almost equally separated ($`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["A-S"]])`$); the imbalance is only $`r f2(link_diff[["drop23"]])`$, and the accuracy is unchanged. Whether an imbalance actually misclassifies points depends, in addition, on the dropped pair itself: the closer the classes $i$ and $j$ are, the smaller the imbalance needed to push points of one into the other. The coupling therefore fails not because one classifier is miscalibrated, but because the two bridging classifiers are miscalibrated unequally.
 
-
-## Out-of-distribution-detection
-
-Most neural networks for classification are trained using supervised fashion, meaning one provides a set samples $\mathbf{x}_i$ with labels $y_i$. The labels belong to a discrete set, which we can identify with This is a problem when a neural network should detect that its input is something it has never seen before. For instance, an automated driving system should be able detect that something is ahead on the road that it is unable to correctly classify, because it has not seen such object in a training set. A very simple method is to threshold the predicted probability--so-called maximum softmax probability method. Studies has shown that this simple method performs very well in practice [@hendrycks2016baseline, @yang2022openood]. If however, a model provided incorrect predictions by several orders of magnitude, the car would require corrective action (stopping or remote assistance) too frequently.
