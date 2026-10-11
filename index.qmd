@@ -495,10 +495,27 @@ for (m in model_order) {
 
 ![Multiplicative miscalibration of Firth logistic regression as a function of class separation. For each Cohen's *d* between 1 and 8, 100 datasets of 50 samples per class were drawn from N(0,1) and N(*d*,1), and the predicted probability of the less likely class was evaluated at the mode of class A (*x* = 0). The purple curve shows the mean of log10(predicted probability / true probability) with a ±1 sd band; the dashed red line marks perfect calibration. The top axis gives the true odds ratio per 1 SD of *x* corresponding to each *d*, and the right axis (log scale) shows the true OR = exp(*d*) (dotted black) alongside the mean Firth-fitted OR (green). Miscalibration is negligible up to *d* ≈ 3.5 and takes off where samples of this size become frequently linearly separable; past that threshold the fitted OR flattens and declines while the true OR keeps growing, so the two curves are complementary views of the same information loss.](firth_dscan.png){#fig-firth-dscan}
 
-# Applications
 
 
-## Partial one-vs-one classification
+
+# Impact on multiclass classification
+
+Although logistic models are in widespread use, the effect of multiplicative miscalibration
+is not well known. The reasons are two fold. First, the phenomenon becomes significant only when the effect size is extremely large. This is illustrated in @fig-firth-dscan for Firth logistic regression, where the miscalibration starts to be evident for Cohen's $d$ larger than 3. In statistical applications, the value of Cohen-$d$ exceeding 0.8 is considered a large effect. Values approaching three are exceedingly rare. Secondly, even when the effect size is large the impact may remain hidden. This is because a binary classifier may perform equally well even when miscalibrated, as long as the decision boundary is unaffected. 
+
+We will now exhibit a classification model where both mitigating factors are absent, and the phenomenon of multiplicative miscalibration clearly shows up. First, in machine learning applications
+it is quite common to see a wide separation among classes. This is desirable, because we want neural 
+networks (or other models) to be quite certain about their classification. We will use a speaker identification network to create a real-world dataset to obtain effect sizes that are quite large. Secondly, we will construct the multiclass model  from binary classifiers. Say we want to classify three classes $i$, $j$, and $k$. We will employ a composite model based on two logistic (binary) classifiers. For example, suppose $p_{ik}$ is trained to compare  classes $i$ vs $k$, and $p_{jk}$ trained to compare $j$ vs $k$. Then the prediction of the model using $p_{ik}$ and $p_{jk}$ will be the distribution $P= (p_i, p_j, p_k)$ such that
+$$
+\dfrac{p_i}{p_k} = \dfrac{p_{ik}(i)}{p_{ik}(k)}\quad\textrm{and }\quad\dfrac{p_j}{p_k} = \dfrac{p_{jk}(j)}{p_{jk}(k)}.
+$$ {#eq-model-partial}
+Note that these assumptions uniquely identify $P$. This is because 
+
+- logistic classifiers never vanish so that $p_{ik} >0$ and $p_{jk}>0$, and  
+- the two equations in @eq-model-partial together with the requirement $p_i +p_j +p_k = 1$ yield three equations for three unknowns.
+
+The interaction of miscalibration of classifiers $p_{ik}$ and $p_{jk}$ will mislead the model to make incorrect predictions despite the fact that classes $i$, $j$, $k$ are well separated.
+
 
 ```{r}
 #| label: partial-coupling-setup
@@ -791,7 +808,7 @@ f3 <- function(x) sprintf("%.3f", x)
 pct <- function(x) sprintf("%.1f", 100 * x)
 ```
 
-The models discussed so far are inherently binary. A common way to extend a binary classifier to $K > 2$ classes is to fit a model on every pair of classes and then *couple* the $\binom{K}{2}$ pairwise probability estimates into a single probability vector over all $K$ classes [@hastie1998classification]. There have been many proposals of coupling methods, but the one in most common use was proposed by Wu--Lin--Weng [@wu2004probability].
+<!-- The models discussed so far are inherently binary. A common way to extend a binary classifier to $K > 2$ classes is to fit a model on every pair of classes and then *couple* the $\binom{K}{2}$ pairwise probability estimates into a single probability vector over all $K$ classes [@hastie1998classification]. There have been many proposals of coupling methods, but the one in most common use was proposed by Wu--Lin--Weng [@wu2004probability]. -->
 
 We empirically evaluate the pairwise coupling framework using a three-class ($K = 3$) speaker recognition task. The dataset includes speech audio from three speakers ($A$, $M$, and $S$), each reciting two English fables: *The North Wind and the Sun* and *The Boy Who Cried Wolf*. The process of converting the raw recordings into classifier-ready inputs follows a short pipeline. First, the audio is resampled to 16 kHz. An energy-based voice-activity detection method retains only segments that are predominantly speech, removing silence and background noise. The first 70% of each speaker's audio is used for training and the last 30% for testing. Inside each part separately, the audio is segmented into non-overlapping 400 ms clips. Each clip is processed by a pretrained speaker-embedding neural network, ECAPA-TDNN [@desplanques2020ecapa], which compresses it into a 192-dimensional vector that summarizes speaker identity, independent of spoken content. Each embedding is subsequently re-scaled to unit $L_2$ norm. This yields $N_{\text{train}} = `r n_tr`$ training embedding vectors (`r n_tr / K3` per speaker) and $N_{\text{test}} = `r n_te`$ test embedding vectors (`r n_te / K3` per speaker).
 
