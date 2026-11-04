@@ -49,7 +49,7 @@ MAXIT_OUT := three_class_multinom_maxit_sep9.png \
              three_class_multinom_maxit_sep9.csv \
              three_class_multinom_maxit_sep3.csv
 
-.PHONY: all pdf clean csv figures
+.PHONY: all pdf submit clean csv figures
 
 all: pdf
 
@@ -61,6 +61,14 @@ all: pdf
 pdf: $(CSV) $(COUPLING_PNGS) $(PARTIAL_PNGS) $(LDA_PARTIAL_PNGS) $(DSCAN_OUT)
 	rm -rf _freeze .quarto/_freeze
 	quarto render $(QMD) --to pdf
+
+## Build both files for anonymous peer review: _manuscript/index.pdf with author
+## details and _anonymous/index.pdf without. The anonymous render reuses the
+## freeze cache written by `pdf`, so both report the same numbers. Fails if the
+## anonymous PDF's metadata names an author.
+submit: pdf
+	quarto render $(QMD) --to pdf --profile anonymous
+	! pdfinfo _anonymous/index.pdf | grep -i '^author:.*[^[:space:]]'
 
 ## Run the calibration-ratio Monte Carlo simulation (N=50/class, means 6
 ## apart, unit variance), fitting L1/L2/Firth/Platt/Platt-2N/LDA and
@@ -109,7 +117,7 @@ $(DSCAN_OUT): .dscan.stamp
 
 ## Remove all cached/generated build artifacts.
 clean:
-	rm -rf _freeze .quarto/_freeze _manuscript $(CSV) \
+	rm -rf _freeze .quarto/_freeze _manuscript _anonymous $(CSV) \
 	       $(COUPLING_PNGS) $(PARTIAL_PNGS) $(LDA_PARTIAL_PNGS) \
 	       $(HT_BOUNDARY_PNG) $(CALIB_OUT) $(MAXIT_OUT) $(DSCAN_OUT) \
 	       .coupling.stamp .partial.stamp .lda_partial.stamp \

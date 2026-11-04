@@ -60,6 +60,11 @@ The output PDF is written under `_manuscript/`.
 - `make csv` — just (re)generate `calibration_ratios.csv`.
 - `make figures` — just (re)generate the three-class Applications figures
   and the Cohen's-*d* scan, without rendering the PDF.
+- `make submit` — build both files for anonymous peer review:
+  `_manuscript/index.pdf` with author details and `_anonymous/index.pdf`
+  without. Authors are kept in `_quarto-full.yml`, not in `index.qmd`. Wrap
+  author-only text such as acknowledgements in
+  `::: {.content-visible unless-profile="anonymous"}`.
 - `make clean` — remove all generated CSVs, PNGs, stamp files, and the
   Quarto freeze/manuscript caches.
 

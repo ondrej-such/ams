@@ -4,6 +4,9 @@ project:
 manuscript:
   article: index.qmd
 
+profile:
+  default: full
+
 format:
   html:
     comments:

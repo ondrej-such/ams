@@ -1,23 +1,7 @@
 ---
 title: Multiplicative miscalibration of logistic models
 
-author:
-  - name: Ondrej Šuch
-    affiliations:
-      - name: Matematický ústav SAV
-        city: Banská Bystrica
-  - name: Muhammad Azeem
-    affiliations:
-      - name: Matematický ústav SAV
-        city: Banská Bystrica
-      - name: Univerzita Komenského v Bratislave
-        city: Bratislava
-  - name: Peter Novotný
-    affiliations:
-      - name: Žilinská Univerzita v Žiline
-        city: Žilina
-    roles: writing
-    corresponding: true
+# Authors are in _quarto-full.yml, so the anonymous profile can omit them.
 notebook-links: false
 bibliography: references.bib
 csl: american-statistical-association.csl

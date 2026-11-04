@@ -1,0 +1,17 @@
+author:
+  - name: Ondrej Šuch
+    affiliations:
+      - name: Matematický ústav SAV
+        city: Banská Bystrica
+  - name: Muhammad Azeem
+    affiliations:
+      - name: Matematický ústav SAV
+        city: Banská Bystrica
+      - name: Univerzita Komenského v Bratislave
+        city: Bratislava
+  - name: Peter Novotný
+    affiliations:
+      - name: Žilinská Univerzita v Žiline
+        city: Žilina
+    roles: writing
+    corresponding: true
