@@ -1,0 +1,15 @@
+$-- Quarto's default PDF title partial, changed to print affiliations under each author.
+$if(title)$
+\title{$title$$if(thanks)$\thanks{$thanks$}$endif$}
+$endif$
+$if(subtitle)$
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
+}
+\makeatother
+\subtitle{$subtitle$}
+$endif$
+\author{$for(by-author)$$it.name.literal$$for(it.affiliations)$\\ {\small $it.name$$if(it.city)$, $it.city$$endif$}$endfor$$sep$ \and $endfor$}
+\date{$date$}
