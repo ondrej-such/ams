@@ -1,10 +1,17 @@
 ---
-title: Multiplicative miscalibration of logistic models
+title: Multiplicative miscalibration of binary logistic models
 
 # Authors are in _quarto-full.yml, so the anonymous profile can omit them.
 notebook-links: false
 bibliography: references.bib
 csl: american-statistical-association.csl
+keywords:
+  - Calibration
+  - Logistic regression
+  - Linear discriminant analysis
+  - Speaker recognition
+  - Pairwise coupling
+  - Statistics education
 abstract: |
   Calibration is an important property of probabilistic models. It measures the match between predicted probability in a given range and the observed frequency. We study the behavior of linear discriminant analysis (LDA) and commonly used variants of the logistic model in the case of large group separation. When the groups follow homoscedastic normal distribution, the Bayes classifier is well approximated by LDA. All models generally agree on the boundary between classes. However, logistic regression variants consistently overestimate the true probability---a behavior we call multiplicative miscalibration. Currently used miscalibration detection techniques are not well suited to uncover this phenomenon. The odds between true probabilities and predicted probabilities may differ by several orders of magnitude even for commonly encountered effect sizes. We illustrate possible problems that may arise in multiclass classification using embeddings from neural networks.
 ---
@@ -33,7 +40,7 @@ We note that the third example is suitable as a classroom project or a lab exerc
 
 Probabilistic modeling provides an answer to the quintessential question of probability theory: "What is the probability of an event?" In a classroom setting, the answer is typically a single number deduced from modeling assumptions. For instance, we may assume that we roll a perfectly symmetrical die or that subsequent throws are independent. In practical applications, however, the question of quantifying probability is often asked *repeatedly* in varying contexts. One naturally expects the answer to vary with the context. For instance, a bank may wish to know the probability that a borrower will repay a loan. The context could be provided by the borrower's current financial disclosure. To answer the question, it is customary to build a *probabilistic model*. <!-- which is really an algorithm taking input (the context) and producing the desired probability as its output. -->
 
-There are many ways to build models, so one may ask how to compare their quality. Non-probabilistic comparisons use the $2\times 2$ contingency matrix with rows and columns corresponding to binary predictions and observed outcomes. One can use any number of metrics for comparison, from accuracy (the ratio of the sum of the diagonal entries to the sum of all entries), through precision and recall to the Matthews correlation coefficient [@yule1912methods; @chicco2021matthews]. However, this approach disregards much of the probabilistic information, because it converts probabilistic outputs to binary responses (e.g., by thresholding the predicted probability $\widehat p$ at $0.5$).
+There are many ways to build models, so one may ask how to compare their quality. Non-probabilistic comparisons use the $2\times 2$ contingency table with rows and columns corresponding to binary predictions and observed outcomes, respectively. One can use any number of metrics for comparison, from accuracy (the ratio of the sum of the diagonal entries to the sum of all entries), through precision and recall to the Matthews correlation coefficient [@yule1912methods; @chicco2021matthews]. However, this approach disregards much of the probabilistic information, because it converts probabilistic outputs to binary responses (e.g., by thresholding the predicted probability $\widehat p$ at $0.5$).
 
 Historically, the question of how to measure the quality of probabilistic predictions arose in the context of weather forecasting [@glenn1950verification]. The first probabilistic forecasts appeared in the early 20th century [@hallenbeck1920forecasting] and have been routine since the 1960s [@murphy1984probability]. A simple way to check how good weather forecasters (or, more precisely, their models) are is to compare their predictions with climate observations. *Climate* is obtained by computing the observed frequency of the event over the long term (one or more years). If it rains on 40% of days in a year, we can compare that with the average probability provided by the forecaster throughout the year. For a good forecaster, the two should be close. This property is called *mean calibration* [@vancalster2016calibration, p. 170]. If we denote by $y\in \{0,1\}$ the variable being predicted and by $X$ the covariates, then a model $\widehat p$ is mean-calibrated if and only if 
 $$
@@ -537,7 +544,7 @@ for (m in model_order) {
 }
 ```
 
-![Multiplicative miscalibration of Firth logistic regression as a function of class separation. For each Cohen's *d* between 1 and 8, 100 datasets of 50 samples per class were drawn from N(0,1) and N(*d*,1), and the predicted probability of the less likely class was evaluated at the mode of class A (*x* = 0). The purple curve shows the mean of log10(predicted probability / true probability) with a ±1 SD band; the dashed red line marks perfect calibration. The top axis gives the true odds ratio per 1 SD of *x* corresponding to each *d*, and the right axis (log scale) shows the true OR = exp(*d*) (dotted black) alongside the mean Firth-fitted OR (green). Miscalibration is negligible up to *d* ≈ 3.5 and takes off where samples of this size become frequently linearly separable; past that threshold the fitted OR flattens and declines while the true OR keeps growing, so the two curves are complementary views of the same information loss.](firth_dscan.png){#fig-firth-dscan}
+![Multiplicative miscalibration of Firth logistic regression as a function of class separation. For each Cohen's *d* between 1 and 8, 100 datasets of 50 samples per class were drawn from N(0,1) and N(*d*,1), and the predicted probability of the less likely class was evaluated at the mode of class A (*x* = 0). The purple curve shows the mean of log10(predicted probability / true probability) with a ±1 SD band; the dashed red line marks perfect calibration. The top axis gives the true odds ratio per 1 SD of *x* corresponding to each *d*, and the right axis (log scale) shows the true OR = exp(*d*) (dotted black) alongside the mean Firth-fitted OR (green). Miscalibration is negligible below *d* ≈ 4 and takes off where samples of this size become frequently linearly separable; past that threshold the fitted OR flattens and declines while the true OR keeps growing, so the two curves are complementary views of the same information loss.](firth_dscan.png){#fig-firth-dscan}
 
 
 
@@ -545,18 +552,17 @@ for (m in model_order) {
 # Impact on multiclass classification {#sec-multiclass}
 
 Although logistic models are in widespread use, the effect of multiplicative miscalibration
-is not well known. The reasons are two fold. First, the phenomenon becomes significant only when the effect size is extremely large. This is illustrated in @fig-firth-dscan for Firth logistic regression, where the miscalibration starts to be evident for Cohen's $d$ larger than about 4. In statistical applications, the value of Cohen's $d$ exceeding 0.8 is considered a large effect. Values approaching three are exceedingly rare. Secondly, even when the effect size is large the impact may remain hidden. This is because a binary classifier may perform equally well even when miscalibrated, as long as the decision boundary is unaffected. 
+is not well known. The reasons are twofold. First, the phenomenon becomes significant only when the effect size is extremely large. This is illustrated in @fig-firth-dscan for Firth logistic regression, where the miscalibration starts to be evident for Cohen's $d$ larger than about 4. In statistical applications, the value of Cohen's $d$ exceeding 0.8 is considered a large effect. Much larger values are uncommon in applied statistics. Secondly, even when the effect size is large, the impact may remain hidden. This is because a binary classifier may perform equally well even when miscalibrated, as long as the decision boundary is unaffected. 
 
 We will now exhibit a classification model where both mitigating factors are absent, and the phenomenon of multiplicative miscalibration clearly shows up. First, in machine learning applications
 it is quite common to see a wide separation among classes. This is desirable, because we want neural 
-networks (or other models) to be quite certain about their classification. We will use a speaker identification network to create a real-world dataset to obtain effect sizes that are quite large. Secondly, we will construct the multiclass model  from binary classifiers. Say we want to classify three classes $i$, $j$, and $k$. We will employ a composite model based on two logistic (binary) classifiers. For example, suppose $p_{ik}$ is trained to compare  classes $i$ vs $k$, and $p_{jk}$ trained to compare $j$ vs $k$; the class $k$ links the two classifiers, so we call it the *linkage class*. Then the prediction of the model using $p_{ik}$ and $p_{jk}$ will be the distribution $P= (p_i, p_j, p_k)$ such that
-$$
-\dfrac{p_i}{p_k} = \dfrac{p_{ik}(i)}{p_{ik}(k)}\quad\textrm{and }\quad\dfrac{p_j}{p_k} = \dfrac{p_{jk}(j)}{p_{jk}(k)}.
-$$ {#eq-model-partial}
-Note that these assumptions uniquely identify $P$. This is because 
+networks to be quite certain about their classification. We will use a speaker identification network to create a real-world dataset to obtain effect sizes that are quite large. Secondly, we will construct the multiclass model from binary classifiers. The classifiers' multiplicative miscalibrations will interfere with one another to produce a manifest deterioration of classification accuracy.
 
-- logistic classifiers never vanish so that $p_{ik} >0$ and $p_{jk}>0$, and  
-- the two equations in @eq-model-partial together with the requirement $p_i +p_j +p_k = 1$ yield three equations for three unknowns.
+## Overview of the classification task
+
+The goal is to construct multiclass classifiers to identify which of three different speakers is speaking. The data are split into training and test sets, and the models are evaluated by their accuracy on the test set. Raw recordings are long and vary in length. Modern speaker recognition networks, such as ECAPA-TDNN [@desplanques2020ecapa] or TitaNet [@koluguri2022titanet] can compress a recording (of variable length) to a fixed-size feature vector called an embedding. To help visualize the results, we further reduce the embeddings to a 2-dimensional vector space. 
+
+
 
 
 ```{r}
@@ -846,27 +852,64 @@ f3 <- function(x) sprintf("%.3f", x)
 pct <- function(x) sprintf("%.1f", 100 * x)
 ```
 
+
 ## Preparation of dataset
 
-We empirically evaluate the pairwise coupling framework using a three-class ($K = 3$) speaker recognition task. The dataset includes speech audio from three speakers ($A$, $M$, and $S$), each reciting two English fables: *The North Wind and the Sun* and *The Boy Who Cried Wolf*. The process of converting the raw recordings into classifier-ready inputs follows a short pipeline. First, the audio is resampled to 16 kHz. An energy-based voice-activity detection method retains only segments that are predominantly speech, removing silence and background noise. The first 70% of each speaker's audio is used for training and the last 30% for testing. Inside each part separately, the audio is segmented into non-overlapping 400 ms clips. Each clip is processed by a pretrained speaker-embedding neural network, ECAPA-TDNN [@desplanques2020ecapa], which compresses it into a 192-dimensional vector that summarizes speaker identity, independent of spoken content. Each embedding is subsequently re-scaled to unit $L_2$ norm. This yields $N_{\text{train}} = `r n_tr`$ training embedding vectors (`r n_tr / K3` per speaker) and $N_{\text{test}} = `r n_te`$ test embedding vectors (`r n_te / K3` per speaker).
+The dataset includes recordings from three student speakers, whom we identify as $A$, $M$, and $S$. Each recited two of Aesop's fables: *The North Wind and the Sun* and *The Boy Who Cried Wolf*; these are often used in linguistic experiments. The mean duration of the recordings is 54.0 s for *The North Wind and the Sun* (range 51.8--55.8 s) and 50.1 s for *The Boy Who Cried Wolf* (range 47.5--52.1 s). The process of converting the raw recordings into classifier-ready inputs follows a short pipeline. 
 
-In order to reduce the `r p192`-dimensional embedding space to $K-1=2$ canonical discriminant directions, we use regularized linear discriminant analysis [@friedman1989regularized]. Since the training sample size ($N_{\text{train}} = `r n_tr`$) is only moderately larger than the number of features ($p = `r p192`$), the empirical pooled within-class covariance matrix is ill-conditioned. To overcome this, we apply linear covariance shrinkage toward a scaled identity with a shrinkage intensity of $\gamma = `r alpha3`$. The projection is fitted on the training points only and then applied unchanged to the test points; in the resulting two-dimensional whitened projection, the training data's pooled within-class covariance matrix is sphered. The reduced-dimensional data have the following properties:
+
+1. The audio is resampled to 16 kHz, as required by ECAPA-TDNN.
+2. An energy-based voice-activity detection method retains only segments that are predominantly speech, removing silence and background noise.
+3. Each recording is split in time: the first 70% of its speech is used for training and the last 30% for testing. 
+4. Inside each part separately, the audio is segmented into non-overlapping 400 ms clips.
+5. Each clip is processed by a pretrained speaker-embedding neural network, ECAPA-TDNN, which compresses it into a 192-dimensional vector that summarizes speaker identity, largely independently of the spoken content.
+6. Each embedding is subsequently re-scaled to unit $L_2$ norm. This is because the network objective during training is to minimize the angle between embeddings of the same speaker and maximize the angle between embeddings of different speakers. This yields $N_{\text{train}} = `r n_tr`$ training embedding vectors (`r n_tr / K3` per speaker) and $N_{\text{test}} = `r n_te`$ test embedding vectors (`r n_te / K3` per speaker).
+7. In order to reduce the `r p192`-dimensional embedding space to two canonical discriminant directions, we use regularized linear discriminant analysis [@friedman1989regularized]. Since the training sample size ($N_{\text{train}} = `r n_tr`$) is only moderately larger than the number of features ($p = `r p192`$), the empirical pooled within-class covariance matrix is ill-conditioned. To overcome this, we apply linear covariance shrinkage toward a scaled identity with a shrinkage intensity of $\gamma = `r alpha3`$. The projection is fitted on the training points only and then applied unchanged to the test points; in the resulting two-dimensional whitened projection, the training data's pooled within-class covariance matrix is sphered. 
+
+
+
+
+
+The reduced-dimensional data have the following properties:
 
 1. Each class approximately follows a bivariate normal distribution with a shared covariance matrix. On the training set, Royston's multivariate Shapiro--Wilk test [@royston1983some] indicates no significant deviation from normality for any speaker (smallest $p = `r f3(min(roy_tr))`$); on the test set it detects modest departures for speakers $A$ and $S$ ($p = `r f3(roy_te[["A"]])`$ and $p = `r f3(roy_te[["S"]])`$). Box's $M$ test [@friendly2020visualizing] fails to reject the null hypothesis of equal class covariances on either set ($p = `r f3(boxM_tr)`$ and $p = `r f3(boxM_te)`$).
 2. For bivariate normal classes with a common covariance matrix and equal priors, the Bayes-optimal rule assigns each point to the class with the nearest mean; since the projected plane is whitened, nearness is measured by ordinary Euclidean distance. Replacing the unknown true means by the training sample means gives the *plug-in Bayes classifier*.
 
 3. All class pairs are perfectly linearly separable in the training set. The Mahalanobis distances between the class means (the multivariate generalization of Cohen's $d$) for the pairs ($A$--$M$, $A$--$S$, $M$--$S$) are $`r f2(d_tr[["A-M"]])`$, $`r f2(d_tr[["A-S"]])`$, and $`r f2(d_tr[["M-S"]])`$ on the training set, and $`r f2(d_te[["A-M"]])`$, $`r f2(d_te[["A-S"]])`$, and $`r f2(d_te[["M-S"]])`$ on the test set, where only the pair $M$--$S$ remains separable. The training distances are larger because the projection was fitted on the training set.
 
-
 ## Models
 
-To evaluate model generalization for each pair of classes, we fit two different one-vs-one base classifiers: LDA (closed-form pooled-covariance discriminant) and a Firth (bias-reduced) logistic regression [@firth1993bias], the latter generalizing the one-dimensional Firth fit used earlier in this paper. For each base classifier, the three pairwise fits are *coupled* into one three-class probability vector [@hastie1998classification] via the fixed-point iteration of Wu, Lin and Weng [@wu2004probability]---the same algorithm LIBSVM uses to turn one-vs-one SVM outputs into multi-class probabilities [@chang2011libsvm]. Full (3-term) WLW coupling recovers the Bayes decision boundaries closely for both base classifiers: on the held-out points, LDA and Firth reach accuracies of $`r f3(acc_full[["LDA"]])`$ and $`r f3(acc_full[["Firth"]])`$, against $`r f3(acc_bayes)`$ for the plug-in Bayes classifier.
+For each pair of classes, we fit two different one-vs-one base classifiers: LDA (closed-form pooled-covariance discriminant) and a Firth (bias-reduced) logistic regression [@firth1993bias], the latter generalizing the one-dimensional Firth fit used earlier in this paper. 
 
-This coupling finds the probability vector $p$ minimizing $L(p) = \sum_{i<j}(r_{ji}\,p_i - r_{ij}\,p_j)^2$, a sum over the three pairwise terms, where $r_{ij}$ is the pairwise estimate of the probability of class $i$ given that the point belongs to class $i$ or $j$.
+For each base classifier, the three pairwise fits can be *coupled* into one three-class probability vector [@hastie1998classification] by the fixed-point iteration of Wu, Lin, and Weng [@wu2004probability], the same algorithm LIBSVM uses to turn one-vs-one SVM outputs into multiclass probabilities [@chang2011libsvm]. We call this the *full* (three-term) Wu--Lin--Weng (WLW) coupling. It recovers the Bayes decision boundaries closely for both base classifiers: on the held-out points, LDA and Firth reach accuracies of $`r f3(acc_full[["LDA"]])`$ and $`r f3(acc_full[["Firth"]])`$, against $`r f3(acc_bayes)`$ for the plug-in Bayes classifier.
 
-With only three classes, dropping pair $(i,j)$ leaves exactly two terms in the objective, for pairs $(i,k)$ and $(j,k)$ with $k$ the linkage class. These two terms are independent of each other (neither involves both $p_i$ and $p_j$), so both can be driven to exactly zero at once: $r_{ki}\,p_i = r_{ik}\,p_k$ and $r_{kj}\,p_j = r_{jk}\,p_k$. These are exactly the relations of @eq-model-partial, so the partial model follows directly from the two kept pairwise odds, with no optimization needed at all. We evaluate these ratios from each pairwise classifier's raw log-odds rather than from its probability output: since the classes are so well separated, a pairwise probability routinely saturates to exactly $0$ or $1$ in floating point, which would silently discard precisely the information needed to tell $i$ and $j$ apart far from class $k$.
+For both types of logistic model, we also fit three *partial* multiclass models, each of which omits the classifier for one pair $\{i,j\}$ of speakers from the set $Q=\{A,M,S\}$; we say that this pair is *dropped*. Let $k$ be the remaining element of $Q$; we call it the *linkage class*.
+The partial model uses two binary classifiers of the given type: $p_{ik}$, trained to compare classes $i$ and $k$, and $p_{jk}$, trained to compare classes $j$ and $k$. The prediction of the model using $p_{ik}$ and $p_{jk}$ will be the distribution $P(\mathbf{x})= (p_i, p_j, p_k)$ such that
+$$
+\dfrac{p_i}{p_k} = \underbrace{\dfrac{p_{ik}(y = i \mid \mathbf{x})}{p_{ik}(y = k \mid\mathbf{x})}}_{r_i}\quad\textrm{and }\quad\dfrac{p_j}{p_k} = \underbrace{\dfrac{p_{jk}(y = j \mid \mathbf{x})}{p_{jk}(y = k \mid \mathbf{x})}}_{r_j}.
+$$ {#eq-model-partial}
+Note that these equations uniquely determine $P(\mathbf{x})$. This is because 
 
-In @fig-partial-coupling, dropping the pair $(i,j)$ predictably degrades the boundary specifically between classes $i$ and $j$, while leaving the region boundaries involving the linkage class $k$ comparatively unaffected. The two base classifiers differ sharply in how much damage this causes, however: LDA's decision regions move only slightly under all three pair removals (its accuracy changes by at most $`r round(100 * lda_max_change)`$ percentage points), while Firth's shift markedly and collapse for one specific dropped pair---dropping $(A,S)$ reduces Firth's held-out accuracy from $`r f3(acc_full[["Firth"]])`$ to $`r f3(acc_drop["Firth", "drop13"])`$, with $`r n_S_to_A`$ of the $`r sum(truth == 3)`$ test points of speaker $S$ assigned to speaker $A$.
+- the predictions of logistic models never vanish (recall @eq-logistic and @eq-logistic2) so that $p_{ik} >0$ and $p_{jk}>0$, and  
+- the two equations in @eq-model-partial together with the requirement $p_i + p_j + p_k = 1$ form a linear system whose unique solution is
+$$
+p_k = \frac{1}{1 + r_i + r_j}, \quad p_i = r_i\,p_k, \quad p_j = r_j\,p_k,
+$$
+with $r_i$ and $r_j$ as defined in @eq-model-partial.
+
+
+
+<!-- ## Models -->
+
+
+
+<!-- This coupling finds the probability vector $p$ minimizing $L(p) = \sum_{i<j}(r_{ji}\,p_i - r_{ij}\,p_j)^2$, a sum over the three pairwise terms, where $r_{ij}$ is the pairwise estimate of the probability of class $i$ given that the point belongs to class $i$ or $j$. -->
+
+<!-- With only three classes, dropping pair $(i,j)$ leaves exactly two terms in the objective, for pairs $(i,k)$ and $(j,k)$ with $k$ the linkage class. These two terms are independent of each other (neither involves both $p_i$ and $p_j$), so both can be driven to exactly zero at once: $r_{ki}\,p_i = r_{ik}\,p_k$ and $r_{kj}\,p_j = r_{jk}\,p_k$. These are exactly the relations of @eq-model-partial, so the partial model follows directly from the two kept pairwise odds, with no optimization needed at all. We evaluate these ratios from each pairwise classifier's raw log-odds rather than from its probability output: since the classes are so well separated, a pairwise probability routinely saturates to exactly $0$ or $1$ in floating point, which would silently discard precisely the information needed to tell $i$ and $j$ apart far from class $k$. -->
+
+## Results
+
+In @fig-partial-coupling, dropping the pair $(i,j)$ predictably degrades the boundary specifically between classes $i$ and $j$, while leaving the region boundaries involving the linkage class $k$ comparatively unaffected. The two base classifiers differ sharply in how much damage this causes, however: LDA's decision regions move only slightly under all three pair removals (its accuracy changes by at most $`r round(100 * lda_max_change)`$ percentage points), while Firth's regions shift markedly and collapse for one specific dropped pair---dropping $(A,S)$ reduces Firth's held-out accuracy from $`r f3(acc_full[["Firth"]])`$ to $`r f3(acc_drop["Firth", "drop13"])`$, with $`r n_S_to_A`$ of the $`r sum(truth == 3)`$ test points of speaker $S$ assigned to speaker $A$. Dropping $(A,M)$ also costs Firth noticeably, lowering its accuracy to $`r f3(acc_drop["Firth", "drop12"])`$.
 
 ```{r}
 #| label: fig-partial-coupling
@@ -931,11 +974,14 @@ for (dn in names(drops)) {
 }
 ```
 
-The partial-coupling experiment in @fig-partial-coupling shows that Firth logistic regression is substantially more sensitive to the removal of a pairwise comparison than LDA. We now explain this behavior through multiplicative miscalibration. By @eq-model-partial, when the pair $(i,j)$ is dropped, the odds between its two classes can be recovered only through the linkage class 
+
+## Analysis
+
+We now explain this behavior through multiplicative miscalibration. By @eq-model-partial, when the pair $(i,j)$ is dropped, the odds between its two classes can be recovered only through the linkage class 
 $$ 
-\frac{p(i)}{p(j)} = \left(\frac{p(i)}{p(k)}\right)\left(\frac{p(k)}{p(j)}\right), 
+\frac{p_i}{p_j} = \left(\frac{p_i}{p_k}\right)\left(\frac{p_k}{p_j}\right), 
 $$ 
-so the two remaining classifiers, $i$--$k$ and $j$--$k$, enter only through their estimates of $p(k)$. With LDA as the reference, we evaluate the multiplicative miscalibration of the linkage class $k$ with respect to each remaining classifier in the partial model (@fig-miscal-box). If both classifiers were equally miscalibrated, their errors would cancel in this product and the odds between the two classes of the removed pair would be unaffected; if the miscalibration is unequal, the remaining imbalance distorts $p(i)/p(j)$ and can cause test points to be misclassified. 
+so the two remaining classifiers, $i$--$k$ and $j$--$k$, enter only through their estimates of $p_k$. With LDA as the reference, we evaluate the multiplicative miscalibration of the linkage class $k$ with respect to each remaining classifier in the partial model (@fig-miscal-box). If both classifiers were equally miscalibrated, their errors would cancel in this product and the odds between the two classes of the removed pair would be unaffected; if the miscalibration is unequal, the remaining imbalance distorts $p_i/p_j$ and can cause test points to be misclassified. Strictly, the errors cancel when the two classifiers distort the *odds* of $k$ by the same factor; since $p(k)$ is small at the evaluated points, the ratio of probabilities shown in @fig-miscal-box closely approximates the ratio of odds. 
 
 
 ```{r}
@@ -967,7 +1013,25 @@ for (g in seq_along(link_diff)) {
 }
 ```
 
-For every dropped pair, the two Firth classifiers miscalibrate the linkage class by very different amounts. The reason lies in the separation of the classes: since the multiplicative miscalibration of a Firth classifier grows with the separation of its two classes (@fig-firth-dscan), the two remaining classifiers, $i$--$k$ and $j$--$k$, which are trained on pairs of classes separated to different degrees, inflate $p(k)$ by different amounts; the larger the difference between their Mahalanobis distances, the larger the imbalance. The two extreme cases make this concrete. When $(A,S)$ is dropped, the remaining pairs $A$--$M$ and $S$--$M$ differ most in separation (Mahalanobis distance of $`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["M-S"]])`$); their miscalibrations differ by $`r f2(link_diff[["drop13"]])`$ orders of magnitude, and the Firth coupling loses the most accuracy. When $(M,S)$ is dropped, the remaining pairs $M$--$A$ and $S$--$A$ are almost equally separated ($`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["A-S"]])`$); the imbalance is only $`r f2(link_diff[["drop23"]])`$, and the accuracy is unchanged. Whether an imbalance actually misclassifies points depends, in addition, on the dropped pair itself: the closer the classes $i$ and $j$ are, the smaller the imbalance needed to push points of one into the other.
+For every dropped pair, the two Firth classifiers miscalibrate the linkage class by very different amounts. The reason lies in the separation of the classes: since the multiplicative miscalibration of a Firth classifier grows with the separation of its two classes (@fig-firth-dscan), the two remaining classifiers, $i$--$k$ and $j$--$k$, which are trained on pairs of classes separated to different degrees, inflate $p(k)$ by different amounts; the larger the difference between their Mahalanobis distances, the larger the imbalance. The two extreme cases make this concrete. When $(A,S)$ is dropped, the remaining pairs $A$--$M$ and $M$--$S$ differ most in separation (Mahalanobis distance of $`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["M-S"]])`$); their miscalibrations differ by $`r f2(link_diff[["drop13"]])`$ orders of magnitude, and the Firth coupling loses the most accuracy. When $(M,S)$ is dropped, the remaining pairs $A$--$M$ and $A$--$S$ are almost equally separated ($`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["A-S"]])`$); the imbalance is only $`r f2(link_diff[["drop23"]])`$, and the accuracy is unchanged. The intermediate case fits the same pattern: when $(A,M)$ is dropped, the remaining pairs $A$--$S$ and $M$--$S$ ($`r f2(d_tr[["A-S"]])`$ against $`r f2(d_tr[["M-S"]])`$) produce an imbalance of $`r f2(link_diff[["drop12"]])`$, and Firth's accuracy drops to $`r f3(acc_drop["Firth", "drop12"])`$. Whether an imbalance actually misclassifies points depends, in addition, on the dropped pair itself: the closer the classes $i$ and $j$ are, the smaller the imbalance needed to push points of one into the other.
+
+# Funding {.unnumbered}
+
+::: {.content-visible when-profile="full"}
+This work was supported by grant VEGA 2/0056/25; by the EU NextGenerationEU through the Recovery and Resilience Plan for Slovakia under the project 17I04-04-V05-00114 (AI-ONKO); and by the Slovak Academy of Sciences (Slovenská akadémia vied) under Doktogrants APP0766 and APP0801.
+:::
+
+::: {.content-hidden when-profile="full"}
+Funding information has been removed for anonymous review.
+:::
+
+# Disclosure statement {.unnumbered}
+
+The authors report there are no competing interests to declare.
+
+# Declaration of generative AI use {.unnumbered}
+
+Claude Code (Anthropic) was used to assist with implementing the simulations and figures, checking mathematical derivations, verifying bibliographic references, and editing the English of the manuscript. The authors reviewed all AI-assisted content and take full responsibility for the content of the manuscript. A preliminary version of the manuscript was also reviewed by OpenAI Sol model. 
 
 # References {.unnumbered}
 
