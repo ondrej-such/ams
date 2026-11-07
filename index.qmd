@@ -13,7 +13,7 @@ keywords:
   - Pairwise coupling
   - Statistics education
 abstract: |
-  Calibration is an important property of probabilistic models. It measures the match between predicted probability in a given range and the observed frequency. We study the behavior of linear discriminant analysis (LDA) and commonly used variants of the logistic model in the case of large group separation. When the groups follow homoscedastic normal distribution, the Bayes classifier is well approximated by LDA. All models generally agree on the boundary between classes. However, logistic regression variants consistently overestimate the true probability---a behavior we call multiplicative miscalibration. Currently used miscalibration detection techniques are not well suited to uncover this phenomenon. The odds between true probabilities and predicted probabilities may differ by several orders of magnitude even for commonly encountered effect sizes. We illustrate possible problems that may arise in multiclass classification using embeddings from neural networks.
+  Calibration, the agreement between predicted probabilities and observed frequencies, is an important property of probabilistic models, yet it is often omitted from introductory courses on statistical learning. Using examples suitable for teaching, we study linear discriminant analysis (LDA) and logistic regression when the classes are well separated. In this setting the data are often linearly separable, so maximum likelihood estimates for logistic regression do not exist and a regularized variant must be used. When the classes are normal and homoscedastic, LDA closely approximates the Bayes classifier, and all models agree on the decision boundary. However, the regularized variants of logistic regression consistently overestimate the probability of the less likely class, often by several orders of magnitude; we call this multiplicative miscalibration. Because the absolute differences between the probabilities remain small, reliability diagrams and the expected calibration error are not well suited to detect it. The effect appears at large separations (Cohen's d of about 4 or more), which are uncommon in classical applications but common in machine learning. Using speaker embeddings from a neural network, we show that it can sharply reduce the accuracy of multiclass classifiers built from pairwise logistic models.
 ---
 
 # Introduction
@@ -208,7 +208,7 @@ legend("bottomright", bty = "n", cex = 0.8, legend = c("LDA", "Logistic regressi
        col = c(col_lda, col_glm, col_qda), lwd = 2, lty = c(1, 2, 4))
 ```
 
-If the dataset were larger, we could set aside part of it to check the models' calibration. As it is, we analyze departures from calibration taking the fitted QDA model as the truth, that is, assuming that both species are normally distributed with unequal variances. The resulting model-based reliability plot is shown in @fig-reliability-qda. Logistic regression departs from QDA by at most 0.04, and only at petal widths of 1.6 and 1.7 cm, which occur for just 6 of the 100 flowers; elsewhere the differences are below 0.01. We could conclude that logistic regression model is well-calibrated for most flowers. On the other LDA shows minor, but noticable departure from calibration.
+If the dataset were larger, we could set aside part of it to check the model's calibration. As it is, we analyze departures from calibration taking the fitted QDA model as the truth, that is, assuming that both species are normally distributed with unequal variances. The resulting model-based reliability plot is shown in @fig-reliability-qda. Logistic regression departs from QDA by at most 0.04, and only at petal widths of 1.6 and 1.7 cm, which occur for just 6 of the 100 flowers; elsewhere the differences are below 0.01. We could conclude that logistic regression model is well-calibrated for most flowers. On the other LDA shows minor, but noticable departure from calibration.
 
 ```{r}
 #| label: fig-reliability-qda
@@ -855,7 +855,7 @@ pct <- function(x) sprintf("%.1f", 100 * x)
 
 ## Preparation of dataset
 
-The dataset includes recordings from three student speakers, whom we identify as $A$, $M$, and $S$. Each recited two of Aesop's fables: *The North Wind and the Sun* and *The Boy Who Cried Wolf*; these are often used in linguistic experiments. The mean duration of the recordings is 54.0 s for *The North Wind and the Sun* (range 51.8--55.8 s) and 50.1 s for *The Boy Who Cried Wolf* (range 47.5--52.1 s). The process of converting the raw recordings into classifier-ready inputs follows a short pipeline. 
+The dataset is based on recordings from three student speakers, whom we identify as $A$, $M$, and $S$. Each recited two of Aesop's fables: *The North Wind and the Sun* and *The Boy Who Cried Wolf*; these are often used in linguistic experiments. The mean duration of the recordings is 54.0 s for *The North Wind and the Sun* (range 51.8--55.8 s) and 50.1 s for *The Boy Who Cried Wolf* (range 47.5--52.1 s). The process of converting the raw recordings into classifier-ready inputs follows a short pipeline. 
 
 
 1. The audio is resampled to 16 kHz, as required by ECAPA-TDNN.
