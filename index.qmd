@@ -33,7 +33,7 @@ As we analyze calibration in these examples, we uncover a phenomenon that is not
 <!-- When the groups  approximately normally distributed with equal covariances, LDA closely approximates the Bayes classifier. -->
 <!-- whereas logistic regression variants consistently overestimate the probabilities. Consequently, the odds predicted by logistic regression may differ from the odds predicted by LDA by a large multiplicative factor, even when the absolute differences between predicted and true probabilities are small. We call this phenomenon \emph{multiplicative miscalibration}.  Since reliability diagrams and calibration errors focus on absolute differences, they may fail to reveal this discrepancy, even when the odds differ by several orders of magnitude. -->
 
-We note that the third example is suitable as a classroom project or a lab exercise, because students can prepare the data themselves. It also bridges statistics and machine learning, two fields whose interplay will undoubtedly become increasingly important.
+We note that the third example is suitable as a classroom project or a lab exercise, because students can prepare and analyze the data themselves. It also bridges statistics and machine learning, two fields whose interplay will undoubtedly become increasingly important.
 
 
 # Background on calibration {#sec-background}
@@ -47,15 +47,15 @@ $$
 \mathbb{E}[y] = \mathbb{E}[\widehat{p}(X)].
 $$
 
-A stronger notion is that of *calibration* (also called *moderate calibration* (Ibid)) of a probabilistic model $\widehat p$. It can be expressed mathematically as
+A stronger notion is that of *calibration* [also called *moderate calibration* in @vancalster2016calibration] of a probabilistic model $\widehat p$. It can be expressed mathematically as
 $$
 \mathbb{E}[y \mid \widehat{p}(X)] = \widehat{p}(X) \qquad \textrm{almost surely.}
 $$
-A simple way to detect miscalibration on a sample is to choose a small interval $I\subset [0,1]$. Suppose we are testing a rain forecaster and choose $I=[0.45, 0.55]$. For a calibrated model, we would expect the observed frequency of rain on days when the forecast $\widehat p$ fell into $I$  to lie in $I$, up to  sampling error. This idea underlies several practical methods of assessing calibration, such as visual assessment via a reliability diagram [@degroot1983comparison; @niculescu2005predicting] or computation of the expected calibration error [@naeini2015obtaining].
+A simple way to detect miscalibration on a sample is to choose a small interval $I\subset [0,1]$. Suppose we are testing a rain forecaster and choose $I=[0.45, 0.55]$. For a calibrated model, we would expect the observed frequency of rain on days when the forecast $\widehat p$ fell into $I$ to lie in $I$, up to sampling error. This idea underlies several practical methods of assessing calibration, such as visual assessment via a reliability diagram [@degroot1983comparison; @niculescu2005predicting] or computation of the expected calibration error [@naeini2015obtaining].
 <!-- We can subdivide the probability interval $[0,1]$ into disjoint subintervals. For each subinterval, we compare the forecast probabilities with the observed frequency of rain on days when the forecast fell into it [@zadrozny2001obtaining]. Suppose, for instance, that one of the subintervals is $I_m = [0.45, 0.55]$.  -->
 
 
-Conceptually, these methods judge the distance between probabilities by taking their difference. However, there are alternative ways to represent probabilities. For instance, the probability $p$ in $(0,1)$ can be replaced by the odds $p/(1-p)$, as is common in biostatistics and sports betting. Another approach is to represent probabilities by their logits $\log \frac{p}{1-p}$, as is common in machine learning. In these representations, the distance between two odds (or logits) may be large even if the difference between probabilities is very small. Both the binned reliability diagram and the expected calibration error depend on subdividing the range of probabilities into a finite number of intervals (typically $\sim10$). However, odds and logits have unbounded ranges, which cannot be covered by finitely many intervals of finite length. Any finite binning therefore has unbounded bins on these scales: the bin $[0, 0.1]$, for example, contains all logits below about $-2.2$, and so groups together forecasts whose odds differ by many orders of magnitude. Moreover, within each bin the comparison is by absolute difference, and if $p,\widehat p\le\varepsilon$, then $|p-\widehat p|\le\varepsilon$ regardless of their ratio. We therefore characterize the binned reliability diagram and the expected calibration error as methods suitable for detecting *additive miscalibration*, in which probabilities are compared by their difference. 
+Conceptually, these methods judge the distance between probabilities by taking their difference. However, there are alternative ways to represent probabilities. For instance, the probability $p$ in $(0,1)$ can be replaced by the odds $p/(1-p)$, as is common in biostatistics and sports betting. Another approach is to represent probabilities by their logits $\log \frac{p}{1-p}$, as is common in machine learning. In these representations, the ratio of two odds (or the difference of two logits) may be large even if the difference between probabilities is very small. Both the binned reliability diagram and the expected calibration error depend on subdividing the range of probabilities into a finite number of intervals (typically $\sim10$). However, odds and logits have unbounded ranges, which cannot be covered by finitely many intervals of finite length. Any finite binning therefore has unbounded bins on these scales: the bin $[0, 0.1]$, for example, contains all logits below about $-2.2$, and so groups together forecasts whose odds differ by many orders of magnitude. Moreover, within each bin the comparison is by absolute difference, and if $p,\widehat p\le\varepsilon$, then $|p-\widehat p|\le\varepsilon$ regardless of their ratio. We therefore characterize the binned reliability diagram and the expected calibration error as methods suitable for detecting *additive miscalibration*, in which probabilities are compared by their difference. 
 
 
 
@@ -159,7 +159,7 @@ legend("topright", bty = "n", legend = legend_labels,
        col = c(col_versicolor, col_virginica), lwd = 2, lty = c(1, 2))
 ```
 
-When two-sample data are normally distributed, quadratic discriminant analysis (QDA) estimates the Bayes classifier. If the data are also homoscedastic, then LDA estimates the Bayes classifier. Notably, the normality assumption is not needed when applying logistic regression. As @fig-chunk1 shows, all three models yield similar predictions, but logistic regression is much closer to QDA than to LDA, consistent with a minor departure from the homoscedasticity assumption (see @tbl-petalwidth).
+When two-sample data are normally distributed, quadratic discriminant analysis (QDA) estimates the Bayes classifier. If the data are also homoscedastic, then LDA estimates the Bayes classifier. Notably, the normality assumption is not needed when applying logistic regression. As @fig-chunk1 shows, all three models yield similar predictions, but logistic regression is much closer to QDA than to LDA, consistent with a departure from the homoscedasticity assumption (the variance ratio is about 1.9; see @tbl-petalwidth).
 
 ```{=html}
 <!-- They include Bayes classifier $$
@@ -208,7 +208,7 @@ legend("bottomright", bty = "n", cex = 0.8, legend = c("LDA", "Logistic regressi
        col = c(col_lda, col_glm, col_qda), lwd = 2, lty = c(1, 2, 4))
 ```
 
-If the dataset were larger, we could set aside part of it to check the model's calibration. As it is, we analyze departures from calibration taking the fitted QDA model as the truth, that is, assuming that both species are normally distributed with unequal variances. The resulting model-based reliability plot is shown in @fig-reliability-qda. Logistic regression departs from QDA by at most 0.04, and only at petal widths of 1.6 and 1.7 cm, which occur for just 6 of the 100 flowers; elsewhere the differences are below 0.01. We could conclude that logistic regression model is well-calibrated for most flowers. On the other LDA shows minor, but noticable departure from calibration.
+If the dataset were larger, we could set aside part of it to check the model's calibration. As it is, we analyze departures from calibration taking the fitted QDA model as the truth, that is, assuming that both species are normally distributed with unequal variances. The resulting model-based reliability plot is shown in @fig-reliability-qda. Logistic regression departs from QDA by at most 0.04, and only at petal widths of 1.6 and 1.7 cm, which occur for just 6 of the 100 flowers; elsewhere the differences are below 0.01. We could conclude that the logistic regression model is well calibrated for most flowers. On the other hand, LDA shows a minor but noticable departure from calibration.
 
 ```{r}
 #| label: fig-reliability-qda
@@ -560,7 +560,7 @@ networks to be quite certain about their classification. We will use a speaker i
 
 ## Overview of the classification task
 
-The goal is to construct multiclass classifiers to identify which of three different speakers is speaking. The data are split into training and test sets, and the models are evaluated by their accuracy on the test set. Raw recordings are long and vary in length. Modern speaker recognition networks, such as ECAPA-TDNN [@desplanques2020ecapa] or TitaNet [@koluguri2022titanet] can compress a recording (of variable length) to a fixed-size feature vector called an embedding. To help visualize the results, we further reduce the embeddings to a 2-dimensional vector space. 
+The goal is to construct multiclass classifiers to identify which of three different speakers is speaking. The data are split into training and test sets, and the models are evaluated by their accuracy on the test set. Raw recordings are long and vary in length. Modern speaker recognition networks, such as ECAPA-TDNN [@desplanques2020ecapa] or TitaNet [@koluguri2022titanet], can compress a recording (of variable length) to a fixed-size feature vector called an embedding. To help visualize the results, we further reduce the embeddings to a two-dimensional vector space. 
 
 
 
@@ -859,7 +859,7 @@ The dataset is based on recordings from three student speakers, whom we identify
 
 
 1. The audio is resampled to 16 kHz, as required by ECAPA-TDNN.
-2. An energy-based voice-activity detection method retains only segments that are predominantly speech, removing silence and background noise.
+2. An energy-based voice-activity detection method retains only segments that are predominantly speech, removing silence.
 3. Each recording is split in time: the first 70% of its speech is used for training and the last 30% for testing. 
 4. Inside each part separately, the audio is segmented into non-overlapping 400 ms clips.
 5. Each clip is processed by a pretrained speaker-embedding neural network, ECAPA-TDNN, which compresses it into a 192-dimensional vector that summarizes speaker identity, largely independently of the spoken content.
@@ -884,7 +884,7 @@ For each pair of classes, we fit two different one-vs-one base classifiers: LDA 
 For each base classifier, the three pairwise fits can be *coupled* into one three-class probability vector [@hastie1998classification] by the fixed-point iteration of Wu, Lin, and Weng [@wu2004probability], the same algorithm LIBSVM uses to turn one-vs-one SVM outputs into multiclass probabilities [@chang2011libsvm]. We call this the *full* (three-term) Wu--Lin--Weng (WLW) coupling. It recovers the Bayes decision boundaries closely for both base classifiers: on the held-out points, LDA and Firth reach accuracies of $`r f3(acc_full[["LDA"]])`$ and $`r f3(acc_full[["Firth"]])`$, against $`r f3(acc_bayes)`$ for the plug-in Bayes classifier.
 
 For both types of logistic model, we also fit three *partial* multiclass models, each of which omits the classifier for one pair $\{i,j\}$ of speakers from the set $Q=\{A,M,S\}$; we say that this pair is *dropped*. Let $k$ be the remaining element of $Q$; we call it the *linkage class*.
-The partial model uses two binary classifiers of the given type: $p_{ik}$, trained to compare classes $i$ and $k$, and $p_{jk}$, trained to compare classes $j$ and $k$. The prediction of the model using $p_{ik}$ and $p_{jk}$ will be the distribution $P(\mathbf{x})= (p_i, p_j, p_k)$ such that
+Each partial model uses two binary classifiers of the given type: $p_{ik}$, trained to compare classes $i$ and $k$, and $p_{jk}$, trained to compare classes $j$ and $k$. The prediction of the model using $p_{ik}$ and $p_{jk}$ is the distribution $P(\mathbf{x})= (p_i, p_j, p_k)$ such that
 $$
 \dfrac{p_i}{p_k} = \underbrace{\dfrac{p_{ik}(y = i \mid \mathbf{x})}{p_{ik}(y = k \mid\mathbf{x})}}_{r_i}\quad\textrm{and }\quad\dfrac{p_j}{p_k} = \underbrace{\dfrac{p_{jk}(y = j \mid \mathbf{x})}{p_{jk}(y = k \mid \mathbf{x})}}_{r_j}.
 $$ {#eq-model-partial}
@@ -916,7 +916,7 @@ In @fig-partial-coupling, dropping the pair $(i,j)$ predictably degrades the bou
 #| echo: false
 #| warning: false
 #| message: false
-#| fig-cap: Argmax decision regions under partial (2-term) Wu--Lin--Weng coupling on the three-speaker dataset, dropping one pairwise term at a time (rows), for LDA (left column) and Firth logistic regression (right column) as the one-vs-one base classifier. Points are the held-out test clips, crosses the training class means. The plug-in Bayes boundary is overlaid (dashed).
+#| fig-cap: Argmax decision regions under partial (two-term) Wu--Lin--Weng coupling on the three-speaker dataset, dropping one pairwise term at a time (rows), for LDA (left column) and Firth logistic regression (right column) as the one-vs-one base classifier. Points are the held-out test clips, crosses the training class means. The plug-in Bayes boundary is overlaid (dashed).
 #| fig-width: 7.5
 #| fig-height: 10.5
 
