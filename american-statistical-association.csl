@@ -67,7 +67,13 @@
   <macro name="title">
     <choose>
       <if type="bill book graphic legal_case legislation motion_picture report song" match="any">
-        <text variable="title" font-style="italic"/>
+        <group delimiter=" ">
+          <text variable="title" font-style="italic"/>
+          <group prefix="(" suffix=")" delimiter=" ">
+            <number variable="edition" form="ordinal"/>
+            <text term="edition" form="short"/>
+          </group>
+        </group>
       </if>
       <else>
         <text variable="title" quotes="true"/>
@@ -149,7 +155,7 @@
     </choose>
   </macro>
   <macro name="access">
-    <text variable="DOI" prefix="https://doi.org/"/>
+    <text variable="DOI" prefix="DOI: "/>
   </macro>
   <citation et-al-min="3" et-al-use-first="1" disambiguate-add-year-suffix="true" collapse="year-suffix">
     <sort>
@@ -161,7 +167,7 @@
         <text macro="author-short"/>
         <text macro="issued-year"/>
       </group>
-      <text macro="citation-locator" prefix=","/>
+      <text macro="citation-locator" prefix=", "/>
     </layout>
   </citation>
   <bibliography hanging-indent="true" entry-spacing="0">
@@ -183,7 +189,7 @@
           <text macro="locators"/>
         </group>
       </group>
-      <text macro="access" prefix=". "/>
+      <text macro="access" prefix=", "/>
     </layout>
   </bibliography>
 </style>

@@ -3,9 +3,15 @@ project:
 
 manuscript:
   article: index.qmd
+  # Set explicitly so Quarto does not query GitHub (git ls-remote) on every
+  # render; that query fails, and aborts the render, when offline. Same value
+  # Quarto would derive from the origin remote.
+  manuscript-url: https://ondrej-such.github.io/ams/
 
 profile:
   default: full
+
+number-sections: true
 
 format:
   html:
@@ -15,6 +21,8 @@ format:
   jats: default
 
   pdf:
+    template-partials:
+      - title.tex
     include-in-header:
       text: |
         \usepackage{tikz}

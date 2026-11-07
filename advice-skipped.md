@@ -4,15 +4,6 @@ Review suggestions we decided not to apply, kept so they aren't raised again
 and can be revisited before submission. Line numbers refer to `index.qmd` at
 the time of the note and may have shifted since.
 
-## Section 2: Background on calibration
-
-### `(Ibid)` as a citation (line 43)
-- **Advice:** replace `(Ibid)` with `[@vancalster2016calibration, p. X]`.
-- **Why it was raised:** the ASA style is author-date and has no "ibid"; Pandoc
-  prints it as plain text, so it does not link to the reference and would point
-  to the wrong source if another citation were inserted before it.
-- **Decision:** kept for now (2026-11-06).
-
 ## Section 3: Logistic models
 
 ### "will not converge" (line 204)

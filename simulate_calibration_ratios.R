@@ -7,7 +7,7 @@
 # scaling, Platt scaling with halved pseudocounts ("2N" targets), LDA,
 # Bayesian logistic regression with Gelman et al.'s (2008) weakly
 # informative Cauchy(0, 2.5) prior (posterior mode via arm::bayesglm), and
-# the same with a Student-t (df = 4) prior -- and record, for every sampled
+# the same with a Student-t (df = 7) prior -- and record, for every sampled
 # point in every replication, the ratio
 # of each model's PREDICTED probability to the TRUE Bayes-optimal
 # probability of being class B, log_p_hat / log_p_true. The downstream
@@ -129,15 +129,15 @@ fit_one_rep <- function(rep_id) {
                          prior.df.for.intercept = 1)
   eta_cauchy <- coef(cauchy_fit)[1] + coef(cauchy_fit)[2] * x
 
-  ## Same construction with a Student-t (df = 4) prior: lighter tails than
+  ## Same construction with a Student-t (df = 7) prior: lighter tails than
   ## the Cauchy (df = 1) but still well short of Normal, so it sits between
   ## Cauchy's robustness and L2/Gaussian shrinkage rather than collapsing
   ## toward L2 the way a higher df (close to the top of the commonly
   ## recommended 3-7 range) would.
   t_fit <- bayesglm(yb ~ x, family = binomial,
-                    prior.scale = 2.5, prior.df = 4,
+                    prior.scale = 2.5, prior.df = 7,
                     prior.scale.for.intercept = 10,
-                    prior.df.for.intercept = 4)
+                    prior.df.for.intercept = 7)
   eta_t <- coef(t_fit)[1] + coef(t_fit)[2] * x
 
   etas <- list(L1 = eta_l1, L2 = eta_l2, Firth = eta_firth,
