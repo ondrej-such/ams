@@ -977,7 +977,7 @@ for (dn in names(drops)) {
 
 ## Analysis
 
-We now explain this behavior through multiplicative miscalibration. By @eq-model-partial, when the pair $(i,j)$ is dropped, the odds between its two classes can be recovered only through the linkage class 
+We now explain this behavior through the lens of multiplicative miscalibration. By @eq-model-partial, when the pair $(i,j)$ is dropped, the odds between its two classes can be recovered only through the linkage class 
 $$ 
 \frac{p_i}{p_j} = \left(\frac{p_i}{p_k}\right)\left(\frac{p_k}{p_j}\right), 
 $$ 
@@ -1014,6 +1014,21 @@ for (g in seq_along(link_diff)) {
 ```
 
 For every dropped pair, the two Firth classifiers miscalibrate the linkage class by very different amounts. The reason lies in the separation of the classes: since the multiplicative miscalibration of a Firth classifier grows with the separation of its two classes (@fig-firth-dscan), the two remaining classifiers, $i$--$k$ and $j$--$k$, which are trained on pairs of classes separated to different degrees, inflate $p(k)$ by different amounts; the larger the difference between their Mahalanobis distances, the larger the imbalance. The two extreme cases make this concrete. When $(A,S)$ is dropped, the remaining pairs $A$--$M$ and $M$--$S$ differ most in separation (Mahalanobis distance of $`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["M-S"]])`$); their miscalibrations differ by $`r f2(link_diff[["drop13"]])`$ orders of magnitude, and the Firth coupling loses the most accuracy. When $(M,S)$ is dropped, the remaining pairs $A$--$M$ and $A$--$S$ are almost equally separated ($`r f2(d_tr[["A-M"]])`$ against $`r f2(d_tr[["A-S"]])`$); the imbalance is only $`r f2(link_diff[["drop23"]])`$, and the accuracy is unchanged. The intermediate case fits the same pattern: when $(A,M)$ is dropped, the remaining pairs $A$--$S$ and $M$--$S$ ($`r f2(d_tr[["A-S"]])`$ against $`r f2(d_tr[["M-S"]])`$) produce an imbalance of $`r f2(link_diff[["drop12"]])`$, and Firth's accuracy drops to $`r f3(acc_drop["Firth", "drop12"])`$. Whether an imbalance actually misclassifies points depends, in addition, on the dropped pair itself: the closer the classes $i$ and $j$ are, the smaller the imbalance needed to push points of one into the other.
+
+# Conclusion {#sec-conclusion}
+
+The examples in this paper are meant for teaching, and the speaker-recognition example of @sec-multiclass in particular lends itself to a classroom project: students can record their own voices, compute embeddings, and observe multiplicative miscalibration in data they collected themselves. Such active, project-based learning is supported by evidence. A large meta-analysis of studies in science, engineering, and mathematics found that failure rates under traditional lecturing are 55% higher than under active learning, and that active learning raises examination performance by about half a letter grade [@freeman2014active]. In college mathematics, inquiry-based courses, in which students work through problems themselves rather than listen to lectures, improved learning outcomes for both women and men across more than 100 course sections at four universities [@laursen2014benefits]. For statistics, the American Statistical Association's guidelines likewise recommend active learning with real data and student projects [@gaise2016].
+
+A practical takeaway from our analyses is that the commonly used techniques for regularization of logistic regression are not free. Regularization is typically used when data are scarce. Modern techniques may yield accurate classifiers even with relatively few samples, but at the cost of miscalibrated models.
+
+Inquisitive readers may pose several questions that we do not answer here, e.g.:
+
+- Is it possible to improve poorly performing models in @sec-multiclass by some standard technique such as temperature scaling?
+- Is Wu--Lin--Weng coupling the best way to generate predictions from pairwise models?
+
+We encourage the readers to answer any such questions. In the era of AI-enhanced research, just posing the right question may quickly yield the answer.
+
+Finally, we hope to have conveyed one more insight: it is useful to keep different representations of probability in mind. Today it is customary to adopt Kolmogorov's elegant axiomatization of probability theory [@kolmogorov1933grundbegriffe]. Historically, however, chances were expressed as odds before they were expressed as probabilities. Cardano's *Liber de ludo aleae*, written around 1564, reasons in terms of odds, and the English word "odds" acquired its sense of chance in the late 16th century. More than a century later, Jacob Bernoulli, in *Ars Conjectandi* (1713), described probability as a degree of certainty, a number between 0 and 1 [@hald1990history]. Critically examining tools that implicitly rely on this probability scale, such as the reliability diagram and the expected calibration error, may yield further insights into calibration.
 
 # Funding {.unnumbered}
 
