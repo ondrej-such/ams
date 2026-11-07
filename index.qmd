@@ -1023,10 +1023,10 @@ A practical takeaway from our analyses is that the commonly used techniques for 
 
 Inquisitive readers may pose several questions that we do not answer here, e.g.:
 
-- Is it possible to improve poorly performing models in @sec-multiclass by some standard technique such as temperature scaling?
+- Is it possible to improve poorly performing models in @sec-multiclass by some standard technique such as temperature scaling [@pmlr-v70-guo17a]?
 - Is Wu--Lin--Weng coupling the best way to generate predictions from pairwise models?
 
-We encourage the readers to answer any such questions. In the era of AI-enhanced research, just posing the right question may quickly yield the answer.
+We encourage the readers to investigate any questions on their mind. In the era of AI-enhanced study and research, just posing a good question may quickly yield a novel answer.
 
 Finally, we hope to have conveyed one more insight: it is useful to keep different representations of probability in mind. Today it is customary to adopt Kolmogorov's elegant axiomatization of probability theory [@kolmogorov1933grundbegriffe]. Historically, however, chances were expressed as odds before they were expressed as probabilities. Cardano's *Liber de ludo aleae*, written around 1564, reasons in terms of odds, and the English word "odds" acquired its sense of chance in the late 16th century. More than a century later, Jacob Bernoulli, in *Ars Conjectandi* (1713), described probability as a degree of certainty, a number between 0 and 1 [@hald1990history]. Critically examining tools that implicitly rely on this probability scale, such as the reliability diagram and the expected calibration error, may yield further insights into calibration.
 
